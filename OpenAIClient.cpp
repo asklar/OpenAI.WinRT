@@ -7,9 +7,13 @@
 #include <winrt/Windows.Data.Json.h>
 #include <format>
 namespace winrt {
-  using namespace Windows::Web::Http;
   using namespace Windows::Data::Json;
+  using namespace Windows::Foundation;
+  using namespace Windows::Foundation::Collections;
+  using namespace Windows::Storage::Streams;
+  using namespace Windows::Web::Http;
 }
+
 namespace winrt::OpenAI::implementation
 {
   OpenAIClient::OpenAIClient()
@@ -26,7 +30,7 @@ namespace winrt::OpenAI::implementation
     m_client.DefaultRequestHeaders().Authorization(winrt::Headers::HttpCredentialsHeaderValue(L"Bearer", m_apiKey));
   }
 
-  Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::hstring prompt, winrt::hstring model)
+  winrt::IAsyncOperation<winrt::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::hstring prompt, winrt::hstring model)
   {
     auto request = winrt::make<CompletionRequest>();
     request.Prompt(prompt);
@@ -37,10 +41,13 @@ namespace winrt::OpenAI::implementation
   winrt::hstring EscapeStringForJson(winrt::hstring v) {
     return winrt::JsonValue::CreateStringValue(v).Stringify();
   }
-  Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::OpenAI::CompletionRequest request)
+  winrt::IAsyncOperation<winrt::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::OpenAI::CompletionRequest request)
   {
     std::vector<winrt::OpenAI::Choice> retChoices;
-    try {
+#ifdef _DEBUG
+    try
+#endif
+    {
       auto promptString = EscapeStringForJson(request.Prompt());
       auto modelString = EscapeStringForJson(request.Model());
 
@@ -56,7 +63,7 @@ namespace winrt::OpenAI::implementation
       const std::wstring_view prompt{ promptString };
       auto requestJson = std::vformat(requestTemplate, std::make_wformat_args(
         model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP()));
-      auto content = winrt::HttpStringContent(requestJson, winrt::Windows::Storage::Streams::UnicodeEncoding::Utf8, L"application/json");
+      auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
       auto response = co_await m_client.PostAsync(CompletionUri(), content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       response.EnsureSuccessStatusCode();
@@ -71,6 +78,7 @@ namespace winrt::OpenAI::implementation
         retChoices.push_back(retChoice);
       }
     }
+#ifdef _DEBUG      
     catch (std::exception& e) {
       auto x = e.what();
       throw;
@@ -79,6 +87,7 @@ namespace winrt::OpenAI::implementation
       auto x = e.message();
       throw;
     }
+#endif
     auto ret = winrt::single_threaded_vector<winrt::OpenAI::Choice>(std::move(retChoices));
     co_return ret;
 
