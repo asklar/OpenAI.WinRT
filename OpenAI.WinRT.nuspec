@@ -16,6 +16,8 @@
   <files>
     <file src="nuget/OpenAI.WinRT.targets" target="build/native" />
     <file src="x64\Release\OpenAI.WinRT\OpenAI.winmd" target="lib/uap10.0" />
-    <file src="x64\Release\OpenAI.WinRT\OpenAI.dll" target="lib/uap10.0" />
+    <file src="x64\Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-x64/native" />
+    <file src="Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-x86/native" />
+    <file src="arm64\Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-arm64/native" />
   </files>
 </package>

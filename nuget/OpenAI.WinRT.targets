@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <Native-Platform Condition="'$(Platform)' == 'Win32'">x86</Native-Platform>
+    <Native-Platform Condition="'$(Platform)' != 'Win32'">$(Platform)</Native-Platform>
+    <_nugetNativeFolder>$(MSBuildThisFileDirectory)..\..\runtimes\win10-$(Native-Platform)\native\</_nugetNativeFolder>
+  </PropertyGroup>
+  
   <ItemGroup>
-    <Reference Include="$(MSBuildThisFileDirectory)../../lib/uap10.0/OpenAI.winmd" IsWinMDFile="true"/>
+    <Reference Include="$(MSBuildThisFileDirectory)..\..\lib\uap10.0\OpenAI.winmd" Private="false">
+      <Implementation>OpenAI.dll</Implementation>
+    </Reference>
+
+    <ReferenceCopyLocalPaths Condition="Exists('$(_nugetNativeFolder)OpenAI.dll')" Include="$(_nugetNativeFolder)OpenAI.dll" />
+    <ReferenceCopyLocalPaths Condition="Exists('$(_nugetNativeFolder)OpenAI.pri')" Include="$(_nugetNativeFolder)OpenAI.pri" />
+    <ReferenceCopyLocalPaths Condition="$(Configuration) == 'Debug'" Include="$(_nugetNativeFolder)**\*.xbf" />
   </ItemGroup>
 </Project>
