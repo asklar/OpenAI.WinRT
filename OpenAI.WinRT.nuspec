@@ -12,6 +12,7 @@
     <description>WinRT library for calling into OpenAI APIs</description>
     <copyright>©️ Alexander Sklar 2022</copyright>
     <tags>OpenAI AI ChatGPT GPT WinRT CppWinRT UWP WindowsAppSDK</tags>
+    <readme>readme.md</readme>
   </metadata>
   <files>
     <file src="nuget/OpenAI.WinRT.targets" target="build/native" />
