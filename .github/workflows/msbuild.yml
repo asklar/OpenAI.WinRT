@@ -57,13 +57,8 @@ jobs:
 
 
     - name: NuGet push
-      # You may pin to the exact commit or the version.
       # uses: edumserrano/nuget-push@29b201d9ab3d2e6fc3f3fff9ffd5b7517b3f56f3
       uses: edumserrano/nuget-push@v1.1.0
       with:
-        # The API key for the NuGet server. Used when pushing the NuGet packages and symbols.
         api-key: ${{env.NUGET_APIKEY}}
-        # Indicates whether this actions should fail if the NuGet package being pushed already exists. Defaults to false.
         fail-if-exists: false
-        # The filepath for the NuGet package to be pushed.
-        nuget-package: OpenAI.WinRT.*.nupkg
