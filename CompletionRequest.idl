@@ -1,0 +1,23 @@
+namespace OpenAI
+{
+  runtimeclass CompletionRequest
+  {
+    CompletionRequest();
+    String Prompt;
+    String Model;
+    String Suffix;
+    UInt32 MaxTokens;
+    Double Temperature;
+    Double TopP;
+    UInt8 NCompletions;
+    Boolean Stream;
+    UInt8 LogProbs;
+    Boolean Echo;
+    String Stop;
+    Double PresencePenalty;
+    Double FrequencyPenalty;
+    UInt8 BestOf;
+    // IMap<String, Double> LogitBias;
+    // String User;
+  }
+}

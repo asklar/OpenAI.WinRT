@@ -1,0 +1,9 @@
+namespace OpenAI
+{
+    [default_interface]
+    runtimeclass Choice
+    {
+      String Text {get; };
+    }
+
+}

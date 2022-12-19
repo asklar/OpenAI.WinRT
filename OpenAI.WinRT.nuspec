@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>OpenAI.WinRT</id>
+    <version>$version$</version>
+    <title>OpenAI.WinRT</title>
+    <authors>Alexander Sklar</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>http://github.com/asklar/OpenAI.WinRT/</projectUrl>
+    <description>WinRT library for calling into OpenAI APIs</description>
+    <copyright>©️ Alexander Sklar 2022</copyright>
+    <tags>OpenAI AI ChatGPT GPT WinRT CppWinRT UWP WindowsAppSDK</tags>
+  </metadata>
+  <files>
+    <file src="nuget/OpenAI.WinRT.targets" target="build/native" />
+    <file src="x64\Release\OpenAI.WinRT\OpenAI.winmd" target="lib/uap10.0" />
+    <file src="x64\Release\OpenAI.WinRT\OpenAI.dll" target="lib/uap10.0" />
+  </files>
+</package>

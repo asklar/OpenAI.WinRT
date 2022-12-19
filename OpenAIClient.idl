@@ -1,0 +1,18 @@
+import "Choice.idl";
+import "CompletionRequest.idl";
+
+namespace OpenAI
+{
+    [default_interface]
+    runtimeclass OpenAIClient
+    {
+        OpenAIClient();
+        String ApiKey;
+        Windows.Foundation.Uri CompletionUri;
+        
+        
+        Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(String prompt, String model);
+        Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(CompletionRequest request);
+        
+    }
+}
