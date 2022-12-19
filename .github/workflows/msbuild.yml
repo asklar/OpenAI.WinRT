@@ -55,10 +55,7 @@ jobs:
         path: OpenAI.WinRT.*.nupkg
         if-no-files-found: error
 
-
     - name: NuGet push
-      # uses: edumserrano/nuget-push@29b201d9ab3d2e6fc3f3fff9ffd5b7517b3f56f3
-      uses: edumserrano/nuget-push@v1.1.0
-      with:
-        api-key: ${{env.NUGET_APIKEY}}
-        fail-if-exists: false
+      run: |
+        nuget push ./*.nupkg --api-key ${{env.NUGET_APIKEY}} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        
