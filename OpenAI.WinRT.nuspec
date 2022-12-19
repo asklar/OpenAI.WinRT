@@ -20,5 +20,6 @@
     <file src="Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-x86/native" />
     <file src="arm64\Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-arm64/native" />
     <file src="readme.md" />
+    <file src="LICENSE" />
   </files>
 </package>
