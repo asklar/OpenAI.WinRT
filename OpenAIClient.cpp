@@ -44,6 +44,7 @@ namespace winrt::OpenAI::implementation
   winrt::IAsyncOperation<winrt::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::OpenAI::CompletionRequest request)
   {
     std::vector<winrt::OpenAI::Choice> retChoices;
+    HttpStatusCode statusCode{};
 #ifdef _DEBUG
     try
 #endif
@@ -57,25 +58,66 @@ namespace winrt::OpenAI::implementation
   "temperature": {},
   "max_tokens": {},
   "n": {},
-  "top_p": {}
+  "top_p": {},
+  "stream": {}
 }})" };
       const std::wstring_view model{ modelString };
       const std::wstring_view prompt{ promptString };
       auto requestJson = std::vformat(requestTemplate, std::make_wformat_args(
-        model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP()));
+        model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
+        request.Stream() ? L"true" : L"false"
+        ));
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
       auto response = co_await m_client.PostAsync(CompletionUri(), content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
-      response.EnsureSuccessStatusCode();
+      statusCode = response.StatusCode();
 
-      auto responseJson = JsonObject::Parse(responseJsonStr);
-      auto choices = responseJson.GetNamedArray(L"choices");
-      for (const auto& c : choices) {
-        auto retChoice = winrt::make<Choice>();
-        const auto& choice = c.GetObject();
-        auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
-        retChoiceImpl->m_text = choice.GetNamedString(L"text");
-        retChoices.push_back(retChoice);
+      response.EnsureSuccessStatusCode();
+      if (!request.Stream()) {
+        auto responseJson = JsonObject::Parse(responseJsonStr);
+        auto choices = responseJson.GetNamedArray(L"choices");
+        for (const auto& c : choices) {
+          const auto& choice = c.GetObject();
+          auto retChoice = winrt::make<Choice>();
+          auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
+          retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          retChoices.push_back(retChoice);
+        }
+      } else {
+        auto ptr = responseJsonStr.begin();
+        std::vector<std::wstring> built;
+        while (ptr < responseJsonStr.end() && ptr != nullptr) {
+          constexpr wchar_t dataStr[] = L"data: ";
+          constexpr wchar_t doneStr[] = L"[DONE]";
+          if (wcsncmp(ptr, dataStr, std::size(dataStr) - 1) == 0) {
+            ptr += std::size(dataStr) - 1;
+            auto jsonStr = ptr;
+            ptr = wcschr(jsonStr, L'\n') + 1; // double \n
+            const_cast<wchar_t*>(ptr)[0] = L'\0';
+            ptr++;
+            if (wcsncmp(jsonStr, doneStr, std::size(doneStr) - 1) == 0) break;
+            auto json = JsonObject::Parse(jsonStr);
+            auto choices = json.GetNamedArray(L"choices");
+            auto choice = choices.GetObjectAt(0);
+            auto text = choice.GetNamedString(L"text");
+            auto index = choice.GetNamedNumber(L"index");
+            if (built.size() <= index) {
+              built.reserve(index + 1);
+              for (auto i = built.size(); i <= index; i++) {
+                built.push_back({});
+              }
+            }
+            built[index] += text;
+          } else {
+            throw winrt::hresult_out_of_bounds();
+          }
+        }
+        for (const auto& c : built) {
+          auto retChoice = winrt::make<Choice>();
+          auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
+          retChoiceImpl->m_text = c;
+          retChoices.push_back(retChoice);
+        }
       }
     }
 #ifdef _DEBUG      
@@ -85,6 +127,127 @@ namespace winrt::OpenAI::implementation
     }
     catch (winrt::hresult_error& e) {
       auto x = e.message();
+      switch (statusCode) {
+      case winrt::Windows::Web::Http::HttpStatusCode::None:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Continue:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::SwitchingProtocols:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Processing:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Ok:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Created:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Accepted:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NonAuthoritativeInformation:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NoContent:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::ResetContent:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::PartialContent:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::MultiStatus:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::AlreadyReported:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::IMUsed:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::MultipleChoices:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::MovedPermanently:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Found:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::SeeOther:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NotModified:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::UseProxy:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::TemporaryRedirect:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::PermanentRedirect:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::BadRequest:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Unauthorized:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::PaymentRequired:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Forbidden:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NotFound:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::MethodNotAllowed:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NotAcceptable:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::ProxyAuthenticationRequired:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::RequestTimeout:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Conflict:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Gone:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::LengthRequired:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::PreconditionFailed:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::RequestEntityTooLarge:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::RequestUriTooLong:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::UnsupportedMediaType:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::RequestedRangeNotSatisfiable:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::ExpectationFailed:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::UnprocessableEntity:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::Locked:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::FailedDependency:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::UpgradeRequired:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::PreconditionRequired:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::TooManyRequests:
+        throw winrt::hresult_error(HRESULT_FROM_NT(RPC_S_SERVER_TOO_BUSY));
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::RequestHeaderFieldsTooLarge:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::InternalServerError:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NotImplemented:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::BadGateway:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::ServiceUnavailable:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::GatewayTimeout:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::HttpVersionNotSupported:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::VariantAlsoNegotiates:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::InsufficientStorage:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::LoopDetected:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NotExtended:
+        break;
+      case winrt::Windows::Web::Http::HttpStatusCode::NetworkAuthenticationRequired:
+        break;
+      default:
+        break;
+      }
       throw;
     }
 #endif
