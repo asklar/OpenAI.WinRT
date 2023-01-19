@@ -1,0 +1,20 @@
+namespace OpenAI
+{
+    [default_interface]
+    runtimeclass PromptTemplate 
+    {
+        PromptTemplate();
+        String Template;
+        Windows.Foundation.IAsyncOperation<String> FormatAsync(Windows.Foundation.Collections.IMapView<String, String> parameters);
+    }
+
+    [default_interface]
+    runtimeclass FewShotTemplate
+    {
+        FewShotTemplate();
+        Windows.Foundation.Collections.IVector<Windows.Foundation.Collections.IMap<String, String> > Examples;
+        Windows.Foundation.IAsyncOperation<Windows.Foundation.Collections.IMapView<String, String> > ExecuteAsync(String input);
+    }
+
+
+}

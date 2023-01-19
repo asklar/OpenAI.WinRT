@@ -134,9 +134,13 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenAI.WinRT.vcxproj">
+      <Project>{1fba7251-5e08-4c06-96cc-b0b7b5f7a417}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\OpenAI.WinRT.0.0.1\build\native\OpenAI.WinRT.targets" Condition="Exists('..\packages\OpenAI.WinRT.0.0.1\build\native\OpenAI.WinRT.targets')" />
     <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.targets')" />
     <Import Project="..\packages\CppWinRT.Builders.0.0.8\build\native\CppWinRT.Builders.targets" Condition="Exists('..\packages\CppWinRT.Builders.0.0.8\build\native\CppWinRT.Builders.targets')" />
   </ImportGroup>
@@ -147,6 +151,5 @@
     <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.props'))" />
     <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.221121.5\build\native\Microsoft.Windows.CppWinRT.targets'))" />
     <Error Condition="!Exists('..\packages\CppWinRT.Builders.0.0.8\build\native\CppWinRT.Builders.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\CppWinRT.Builders.0.0.8\build\native\CppWinRT.Builders.targets'))" />
-    <Error Condition="!Exists('..\packages\OpenAI.WinRT.0.0.1\build\native\OpenAI.WinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\OpenAI.WinRT.0.0.1\build\native\OpenAI.WinRT.targets'))" />
   </Target>
 </Project>

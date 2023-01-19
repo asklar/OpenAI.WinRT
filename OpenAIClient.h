@@ -3,6 +3,8 @@
 #include "OpenAIClient.g.h"
 #include "Choice.g.h"
 #include "CompletionRequest.g.h"
+#include "PromptTemplate.g.h"
+#include "FewShotTemplate.g.h"
 #include <winrt/Windows.Web.Http.h>
 
 namespace winrt::OpenAI::implementation
@@ -23,6 +25,10 @@ namespace winrt::OpenAI::implementation
         void CompletionUri(winrt::Windows::Foundation::Uri v) noexcept { m_completionUri = v; }
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::hstring prompt, winrt::hstring model);
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::OpenAI::CompletionRequest request);
+
+        winrt::OpenAI::PromptTemplate CreateTemplate(winrt::hstring promptTemplateString);
+        winrt::OpenAI::FewShotTemplate CreateFewShotTemplate(winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> parameters);
+
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };

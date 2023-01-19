@@ -158,6 +158,10 @@
     <ClInclude Include="OpenAIClient.h">
       <DependentUpon>OpenAIClient.idl</DependentUpon>
     </ClInclude>
+    <ClInclude Include="PromptTemplate.h">
+      <DependentUpon>PromptTemplate.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Choice.cpp">
@@ -175,6 +179,10 @@
       <DependentUpon>OpenAIClient.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="PromptTemplate.cpp">
+      <DependentUpon>PromptTemplate.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Choice.idl">
@@ -184,16 +192,18 @@
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="OpenAIClient.idl" />
+    <Midl Include="PromptTemplate.idl">
+      <SubType>Designer</SubType>
+    </Midl>
   </ItemGroup>
   <ItemGroup>
+    <None Include="OpenAI.WinRT.nuspec" />
     <None Include="OpenAI_WinRT.def" />
+    <None Include="readme.md" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="PropertySheet.props" />
-    <Text Include="readme.txt">
-      <DeploymentContent>false</DeploymentContent>
-    </Text>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

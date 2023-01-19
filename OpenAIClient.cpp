@@ -2,6 +2,7 @@
 #include "OpenAIClient.h"
 #include "OpenAIClient.g.cpp"
 #include "CompletionRequest.h"
+#include "PromptTemplate.h"
 #include <winrt/Windows.Web.Http.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 #include <winrt/Windows.Data.Json.h>
@@ -253,6 +254,26 @@ namespace winrt::OpenAI::implementation
 #endif
     auto ret = winrt::single_threaded_vector<winrt::OpenAI::Choice>(std::move(retChoices));
     co_return ret;
+
+  }
+
+  winrt::OpenAI::PromptTemplate OpenAIClient::CreateTemplate(winrt::hstring promptTemplateString) {
+    auto promptTemplate = winrt::make<PromptTemplate>();
+    auto promptTemplateImpl = winrt::get_self<PromptTemplate>(promptTemplate);
+    promptTemplateImpl->m_client = *this;
+    promptTemplateImpl->Template(promptTemplateString);
+    return promptTemplate;
+  }
+
+  winrt::OpenAI::FewShotTemplate OpenAIClient::CreateFewShotTemplate(winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> parameters)
+  {
+    auto promptTemplate = winrt::make<FewShotTemplate>();
+    auto promptTemplateImpl = winrt::get_self<FewShotTemplate>(promptTemplate);
+    promptTemplateImpl->m_client = *this;
+    for (const auto& p : parameters) {
+      promptTemplateImpl->m_parameters.push_back(p.c_str());
+    }
+    return promptTemplate;
 
   }
 }
