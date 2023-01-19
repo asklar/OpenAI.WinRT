@@ -57,5 +57,5 @@ jobs:
 
     - name: NuGet push
       run: |
-        nuget push ./*.nupkg -ApiKey ${{env.NUGET_APIKEY}} -Source https://api.nuget.org/v3/index.json -SkipDuplicate
+        nuget push *.nupkg -ApiKey ${{env.NUGET_APIKEY}} -Source https://api.nuget.org/v3/index.json -SkipDuplicate
         
