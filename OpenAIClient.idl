@@ -10,6 +10,8 @@ namespace OpenAI
         OpenAIClient();
         String ApiKey;
         Windows.Foundation.Uri CompletionUri;
+
+        Boolean UseBearerTokenAuthorization;
         
         
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(String prompt, String model);
@@ -17,5 +19,7 @@ namespace OpenAI
         
         PromptTemplate CreateTemplate(String prompt);
         FewShotTemplate CreateFewShotTemplate(Windows.Foundation.Collections.IVectorView<String> parameters);
+
+        
     }
 }

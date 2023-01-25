@@ -29,10 +29,14 @@ namespace winrt::OpenAI::implementation
         winrt::OpenAI::PromptTemplate CreateTemplate(winrt::hstring promptTemplateString);
         winrt::OpenAI::FewShotTemplate CreateFewShotTemplate(winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> parameters);
 
+        bool UseBearerTokenAuthorization() const noexcept { return m_useBearerTokenAuthorization; }
+        void UseBearerTokenAuthorization(bool v) { m_useBearerTokenAuthorization = v; SetAuth(); }
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };
       winrt::Windows::Web::Http::HttpClient m_client;
+      bool m_useBearerTokenAuthorization = true;
+      void SetAuth();
     };
 }
 

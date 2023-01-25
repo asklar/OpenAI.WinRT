@@ -28,7 +28,16 @@ namespace winrt::OpenAI::implementation
   void OpenAIClient::ApiKey(winrt::hstring v) noexcept
   {
     m_apiKey = v;
-    m_client.DefaultRequestHeaders().Authorization(winrt::Headers::HttpCredentialsHeaderValue(L"Bearer", m_apiKey));
+    SetAuth();
+  }
+
+  void OpenAIClient::SetAuth() {
+    m_client.DefaultRequestHeaders().Clear();
+    if (m_useBearerTokenAuthorization) {
+      m_client.DefaultRequestHeaders().Authorization(winrt::Headers::HttpCredentialsHeaderValue(L"Bearer", m_apiKey));
+    } else {
+      m_client.DefaultRequestHeaders().Append(L"api-key", m_apiKey);
+    }
   }
 
   winrt::IAsyncOperation<winrt::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetCompletionAsync(winrt::hstring prompt, winrt::hstring model)
