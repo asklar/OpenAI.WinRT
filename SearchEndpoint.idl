@@ -1,0 +1,11 @@
+namespace OpenAI
+{
+    [default_interface]
+    runtimeclass SearchEndpoint
+    {
+        SearchEndpoint();
+        String ApiKey;
+        String Market;
+        Windows.Foundation.IAsyncOperation<Windows.Data.Json.JsonObject> ExecuteAsync(String query);
+    }
+}

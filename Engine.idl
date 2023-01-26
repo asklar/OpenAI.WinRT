@@ -1,0 +1,34 @@
+import "OpenAIClient.idl";
+import "SearchEndpoint.idl";
+
+namespace OpenAI
+{
+  [default_interface]
+  runtimeclass Answer
+  {
+    String Value;
+    Double Confidence;
+  }
+
+    struct EngineStepEventArgs {
+      UInt32 StepNumber;
+      String EndpointName;
+      String Value;
+    };
+
+    [default_interface]
+    runtimeclass Engine
+    {
+        Engine();
+        SearchEndpoint SearchEndpoint;
+        OpenAIClient OpenAIClient;
+        UInt32 MaxSteps;
+
+        Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
+
+        event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
+        event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
+
+    }
+
+}
