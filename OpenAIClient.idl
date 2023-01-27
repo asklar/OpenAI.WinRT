@@ -1,11 +1,12 @@
 import "Choice.idl";
 import "CompletionRequest.idl";
 import "PromptTemplate.idl";
+import "Engine.idl";
 
 namespace OpenAI
 {
     [default_interface]
-    runtimeclass OpenAIClient
+    runtimeclass OpenAIClient : ISkill
     {
         OpenAIClient();
         String ApiKey;

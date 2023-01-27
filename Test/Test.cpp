@@ -7,11 +7,140 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/openai.h>
 #include <winrt/builders/OpenAI.CompletionRequest.h>
+#include <winrt/builders/OpenAI.OpenAIClient.h>
+#include <winrt/builders/OpenAI.SearchEndpoint.h>
+#include <winrt/builders/OpenAI.Engine.h>
+#include <winrt/Windows.Data.Json.h>
+#include <numeric>
+#include <format>
+
+#include "../Calculator.h"
+
+using namespace winrt;
+using namespace Windows::Data::Json;
+
+winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) {
+  auto a = OpenAI::Answer{};
+
+  try {
+    auto x = calculator::eval<double>(winrt::to_string(expression));
+    a.Value(winrt::to_hstring(x));
+    a.Confidence(1);
+    co_return a;
+  }
+  catch (...) {}
+
+  auto prompt = std::vformat(LR"(You are an AI designed to calculate arithmetic expressions. Reply with the simplest answer in the form of a json: {{ "answer": "...", "confidence": ... }}.
+The confidence is a number between 0 and 1 about how confident you are in your answer.
+The expression is: {}
+)", std::make_wformat_args(expression.c_str()));
+
+
+  auto client = engine.GetSkill(L"openai");
+  auto completion = co_await client.ExecuteAsync(prompt, original);
+  auto completion1 = completion.Value();
+  JsonObject completionJson;
+  if (JsonObject::TryParse(completion1, completionJson)) {
+    if (completionJson.HasKey(L"answer")) {
+      a.Value(completionJson.GetNamedString(L"answer"));
+      a.Confidence(completionJson.GetNamedNumber(L"confidence"));
+    }
+  }
+  co_return a;
+}
+
+
+auto Sort(const winrt::hstring& expression, const winrt::hstring& original, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+  std::vector<std::wstring> items;
+
+  JsonArray arr;
+  if (JsonArray::TryParse(expression, arr)) {
+    for (const auto& a : arr) items.push_back(a.GetString().c_str());
+  } else {
+    std::wstringstream ss(expression.c_str());
+    std::wstring item;
+    while (std::getline(ss, item, L',')) {
+      items.push_back(item.substr(item.find_first_not_of(L' ')));
+    }
+  }
+  std::sort(items.begin(), items.end());
+  std::wstring out = std::accumulate(items.begin(), items.end(), std::wstring{ L"[" }, [](const auto& i, const auto& v) { return i + L",\"" + v  + L"\""; }).erase(1, 1) + L"]";
+  auto answer = OpenAI::Answer(winrt::hstring{ out.c_str() });
+  co_return answer;
+
+}
 
 int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
-  auto openai = winrt::OpenAI::OpenAIClient{};
+
+  auto search = winrt::OpenAI::builders::SearchEndpoint();
+
+  auto openai = winrt::OpenAI::builders::OpenAIClient()
+    .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
+    .UseBearerTokenAuthorization(false)
+    ;
+
+  auto calculator = winrt::OpenAI::Skill(L"calculator", OpenAI::SkillHandlerAsync{ &CalculatorAsync });
+
+  auto sort = winrt::OpenAI::Skill(L"sortListAlphabetical", { &Sort });
+
+  auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+    auto client = engine.GetSkill(L"openai");
+    auto intent = co_await client.ExecuteAsync(std::vformat(LR"(You are an assistant helping the user with their files on Windows. 
+
+Respond with a json that contains the folder and the set of files to fetch. Use * for wildcards.
+For example: {{ "folder": "documents", "filespec": "*" }} to fetch all files from the documents folder.
+or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
+
+Here are the files the user wants: {}
+
+)", std::make_wformat_args(expression)), original);
+    auto text = intent.Value();
+    auto json = JsonObject::Parse(text);
+    std::wcout << "[files skill] " << text << "\n";
+    co_return OpenAI::Answer(LR"(hammerthrow.txt
+taylorSwiftTopHits.docx
+AgneHammerThrowRecord.md
+OpenAIMonetizationPlan.pptx
+ASklarIndieMovie.mp4
+)");
+  });
+
+  auto engine = winrt::OpenAI::builders::Engine{}
+  .Skills({ search, openai, calculator, files, sort });
+
+  search.Engine(engine);
+  calculator.Engine(engine);
+  files.Engine(engine);
+  
+
+
+
+  // For debugging purposes:
+  engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
+        std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  --> " << args.Value << L"\n";
+      });
+  engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
+    std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  <-- " << args.Value << L"\n";
+    });
+
+
+  //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();
+  auto answer = engine.AskAsync({ L"get the files on my desktop folder and sort them alphabetically" }).get();
+
+  /*
+auto question = L"who is Olivia Wilde's boyfriend";
+
+auto answer = engine.AskAsync({ question }).get();
+
+std::wcout << "Q: " << question << L"\n";
+std::wcout << "A: " << answer.Value() << L"\n";
+std::wcout << "Confidence: " << answer.Confidence() << L"\n";
+*/
+
+
+
   //auto completionTask = openai.GetCompletionAsync(L"git clone ", L"text-davinci-003");
   //auto completions = completionTask.get();
   //for (auto const& c : completions) {
@@ -21,7 +150,7 @@ int main()
   auto completionTask2 = openai.GetCompletionAsync(
     winrt::OpenAI::builders::CompletionRequest{}
     .Prompt(L"git clone ")
-    .Model(L"text-davinci-003")
+    //.Model(L"text-davinci-003")
     .NCompletions(5)
     .Temperature(0.7f)
     .MaxTokens(100)

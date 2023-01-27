@@ -1,11 +1,12 @@
 import "OpenAIClient.idl";
-import "SearchEndpoint.idl";
 
 namespace OpenAI
 {
   [default_interface]
   runtimeclass Answer
   {
+    Answer();
+    Answer(String strValue);
     String Value;
     Double Confidence;
   }
@@ -16,19 +17,39 @@ namespace OpenAI
       String Value;
     };
 
+  runtimeclass Engine;
+
+  interface ISkill
+  {
+    String Name { get; };
+    Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, String originalQuestion);
+    
+  }
+
+  delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, String originalQuestion, Engine engine);
+
+  [default_interface]
+  runtimeclass Skill : ISkill
+  {
+    Skill(String name, SkillHandlerAsync handler);
+    Engine Engine;
+  }
+
+
     [default_interface]
     runtimeclass Engine
     {
         Engine();
-        SearchEndpoint SearchEndpoint;
-        OpenAIClient OpenAIClient;
+
+        Windows.Foundation.Collections.IVector<ISkill> Skills{ get; };
+        ISkill GetSkill(String name);
+
         UInt32 MaxSteps;
 
         Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
 
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
-
     }
 
 }

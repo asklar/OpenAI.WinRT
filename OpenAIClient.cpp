@@ -285,4 +285,16 @@ namespace winrt::OpenAI::implementation
     return promptTemplate;
 
   }
+
+  Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> OpenAIClient::ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery)
+  {
+    auto cr = winrt::OpenAI::CompletionRequest{};
+    cr.MaxTokens(2000);
+    cr.NCompletions(1);
+    cr.Prompt(query);
+    auto response = co_await GetCompletionAsync(cr);
+    auto text = response.GetAt(0).Text();
+    auto answer = winrt::OpenAI::Answer(text);
+    co_return answer;
+  }
 }
