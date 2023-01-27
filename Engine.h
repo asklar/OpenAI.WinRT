@@ -31,7 +31,7 @@ namespace winrt::OpenAI::implementation
     void Engine(const OpenAI::Engine& e) { m_engine = e; }
     winrt::hstring m_name;
     SkillHandlerAsync m_handler;
-    winrt::OpenAI::Engine m_engine;
+    winrt::OpenAI::Engine m_engine{ nullptr };
   };
 
   struct Engine : EngineT<Engine>
@@ -54,6 +54,10 @@ namespace winrt::OpenAI::implementation
       auto s = std::find_if(m_skills.begin(), m_skills.end(), [name](const ISkill& s) {return s.Name() == name; });
       if (s != m_skills.end()) return *s;
       throw winrt::hresult_class_not_available{};
+    }
+
+    void ConnectSkills() const {
+      for (const auto& s : m_skills) s.Engine(*this);
     }
 
   private:

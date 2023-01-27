@@ -39,7 +39,7 @@ namespace winrt::OpenAI::implementation
 
     winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> SearchAsync(hstring const& query);
     winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
-    winrt::OpenAI::Engine m_engine;
+    winrt::OpenAI::Engine m_engine{ nullptr };
 
   };
 }

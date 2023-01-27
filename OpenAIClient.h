@@ -35,14 +35,15 @@ namespace winrt::OpenAI::implementation
 
         bool UseBearerTokenAuthorization() const noexcept { return m_useBearerTokenAuthorization; }
         void UseBearerTokenAuthorization(bool v) { m_useBearerTokenAuthorization = v; SetAuth(); }
-
+        OpenAI::Engine Engine() const noexcept { return m_engine; }
+        void Engine(OpenAI::Engine e) { m_engine = e; }
         Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery);
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };
       winrt::Windows::Web::Http::HttpClient m_client;
       bool m_useBearerTokenAuthorization = true;
-      
+      OpenAI::Engine m_engine{ nullptr };
       void SetAuth();
     };
 }

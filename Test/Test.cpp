@@ -109,11 +109,7 @@ ASklarIndieMovie.mp4
 
   auto engine = winrt::OpenAI::builders::Engine{}
   .Skills({ search, openai, calculator, files, sort });
-
-  search.Engine(engine);
-  calculator.Engine(engine);
-  files.Engine(engine);
-  
+  engine.ConnectSkills();
 
 
 
@@ -126,8 +122,10 @@ ASklarIndieMovie.mp4
     });
 
 
-  //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();
   auto answer = engine.AskAsync({ L"get the files on my desktop folder and sort them alphabetically" }).get();
+
+
+  //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();
 
   /*
 auto question = L"who is Olivia Wilde's boyfriend";

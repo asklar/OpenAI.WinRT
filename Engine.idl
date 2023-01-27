@@ -23,7 +23,7 @@ namespace OpenAI
   {
     String Name { get; };
     Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, String originalQuestion);
-    
+    Engine Engine;
   }
 
   delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, String originalQuestion, Engine engine);
@@ -32,7 +32,6 @@ namespace OpenAI
   runtimeclass Skill : ISkill
   {
     Skill(String name, SkillHandlerAsync handler);
-    Engine Engine;
   }
 
 
@@ -50,6 +49,8 @@ namespace OpenAI
 
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
+
+        void ConnectSkills();
     }
 
 }
