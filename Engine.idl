@@ -73,7 +73,6 @@ namespace OpenAI
         event Windows.Foundation.TypedEventHandler<String, String> EventLogged;
         void ConnectSkills();
 
-        Windows.Data.Json.JsonObject ParseApiInput()
     }
 
 }
