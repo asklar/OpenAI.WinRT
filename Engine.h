@@ -64,13 +64,28 @@ namespace winrt::OpenAI::implementation
     void EngineStepSend(winrt::event_token const& token) noexcept { m_send.remove(token); }
     winrt::event_token EngineStepReceive(winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs> const& handler) { return m_receive.add(handler); }
     void EngineStepReceive(winrt::event_token const& token) noexcept {m_receive.remove(token); }
+    winrt::event_token EventLogged(winrt::Windows::Foundation::TypedEventHandler<winrt::hstring, winrt::hstring> const& handler) { return m_eventLogged.add(handler); }
+    void EventLogged(winrt::event_token const& token) noexcept { m_eventLogged.remove(token); }
+
 
     uint32_t MaxSteps() const noexcept { return m_maxSteps; }
     void MaxSteps(uint32_t v) { m_maxSteps = v; }
 
+    void Log(LogLevel level, winrt::hstring skill, winrt::hstring message) {
+      if (m_eventLogged)
+        m_eventLogged(skill, message);
+      //std::wcout << L"[" << skillName << L" - " << (int32_t)level << L"] " << message << L"\n";
+    }
+
     winrt::OpenAI::ISkill GetSkill(winrt::hstring name) {
-      auto s = std::find_if(m_skills.begin(), m_skills.end(), [name](const ISkill& s) {return s.Name() == name; });
-      if (s != m_skills.end()) return *s;
+      auto s = std::find_if(m_skills.begin(), m_skills.end(), [name](const ISkill& s) {
+        return CompareStringOrdinal(s.Name().c_str(), -1, name.c_str(), -1, TRUE) == CSTR_EQUAL; 
+        });
+
+      if (s != m_skills.end()) {
+        auto result = *s;
+        return result;
+      }
       throw winrt::hresult_class_not_available{};
     }
 
@@ -89,6 +104,7 @@ namespace winrt::OpenAI::implementation
     //winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_send;
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_receive;
+    winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::hstring, winrt::hstring>> m_eventLogged;
     uint32_t m_maxSteps{ 5 };
   };
 

@@ -48,10 +48,23 @@ The expression is: {}
 
 
 auto Sort(const winrt::hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
-  std::vector<std::wstring> items;
+  auto client = engine.GetSkill(L"openai");
 
-  JsonArray arr;
-  if (JsonArray::TryParse(expression, arr)) {
+  auto query = std::vformat(LR"(The user has provided a list of items. 
+Reply with the items formatted in a json: {{ "items": [ "...", "...", ...] }} 
+Each item in the array should be enclosed by " (quotes).
+
+The items:
+{}
+)", std::make_wformat_args(expression));
+  auto eng{ engine };
+  auto input = co_await client.ExecuteAsync(query, context);
+  
+  eng.Log(OpenAI::LogLevel::Informational, winrt::hstring{ L"sortAlphabetical" }, input.Value());
+  JsonObject obj;
+  std::vector<std::wstring> items;
+  if (JsonObject::TryParse(input.Value(), obj)) {
+    auto arr = obj.GetNamedArray(L"items");
     for (const auto& a : arr) items.push_back(a.GetString().c_str());
   } else {
     std::wstringstream ss(expression.c_str());
@@ -84,24 +97,29 @@ int main()
 
   auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
     auto client = engine.GetSkill(L"openai");
+    std::wstring exp{ expression };
     auto intent = co_await client.ExecuteAsync(std::vformat(LR"(You are an assistant helping the user with their files on Windows. 
 
-Respond with a json that contains the folder and the set of files to fetch. Use * for wildcards.
+Respond with a well-formed json that contains the folder and the set of files to fetch. Use * for wildcards.
 For example: {{ "folder": "documents", "filespec": "*" }} to fetch all files from the documents folder.
 or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
 
 Here are the files the user wants: {}
 
-)", std::make_wformat_args(expression)), context);
+)", std::make_wformat_args(exp)), context);
     auto text = intent.Value();
-    auto json = JsonObject::Parse(text);
-    std::wcout << "[files] " << text << "\n";
-    co_return OpenAI::Answer(LR"(hammerthrow.txt
+    JsonObject json;
+    if (JsonObject::TryParse(text, json)) {
+      std::wcout << "[files] " << text << "\n";
+      co_return OpenAI::Answer(LR"(hammerthrow.txt
 taylorSwiftTopHits.docx
 AgneHammerThrowRecord.md
 OpenAIMonetizationPlan.pptx
 ASklarIndieMovie.mp4
 )");
+    } else {
+      co_return OpenAI::Answer(LR"({ "error": "input was not a valid json")");
+    }
   });
 
   auto engine = winrt::OpenAI::builders::Engine{}
@@ -123,9 +141,13 @@ ASklarIndieMovie.mp4
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
     std::wcout << L"Step " << args.Context().Step() << L" [" << args.EndpointName() << L"]  <-- " << args.Value() << L"\n";
     });
+  engine.EventLogged([](winrt::hstring skill, winrt::hstring msg) {
+    std::wcout << L"[" << skill << "]: " << msg << L"\n";
+    });
 
 
-  auto answer = engine.AskAsync({ L"get the files on my desktop folder and sort them alphabetically" }).get();
+  auto question = L"get the files on my desktop folder and sort them alphabetically";
+  auto answer = engine.AskAsync({ question }).get();
 
 
   //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();
@@ -135,10 +157,11 @@ auto question = L"who is Olivia Wilde's boyfriend";
 
 auto answer = engine.AskAsync({ question }).get();
 
-std::wcout << "Q: " << question << L"\n";
-std::wcout << "A: " << answer.Value() << L"\n";
-std::wcout << "Confidence: " << answer.Confidence() << L"\n";
 */
+
+  std::wcout << "Q: " << question << L"\n";
+  std::wcout << "A: " << answer.Value() << L"\n";
+  std::wcout << "Confidence: " << answer.Confidence() << L"\n";
 
 
 

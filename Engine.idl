@@ -47,6 +47,12 @@ namespace OpenAI
     Skill(String name, SkillHandlerAsync handler);
   }
 
+    enum LogLevel
+  {
+    Informational,
+    Warning,
+    Error
+  };
 
     [default_interface]
     runtimeclass Engine
@@ -62,7 +68,8 @@ namespace OpenAI
         
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
-
+        void Log(LogLevel level, String skillName, String message);
+        event Windows.Foundation.TypedEventHandler<String, String> EventLogged;
         void ConnectSkills();
     }
 
