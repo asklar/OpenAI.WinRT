@@ -5,6 +5,7 @@
 #include "CompletionRequest.g.h"
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
+#include "GPTSkill.g.h"
 #include <winrt/Windows.Web.Http.h>
 
 namespace winrt::OpenAI::implementation
@@ -15,13 +16,22 @@ namespace winrt::OpenAI::implementation
       winrt::hstring m_text;
     };
 
+    struct GPTSkill : GPTSkillT<GPTSkill> {
+      GPTSkill(OpenAI::OpenAIClient c) : m_client(c) {}
+      winrt::hstring Name() const noexcept { return L"openai"; }
+      OpenAI::Engine Engine() const noexcept { return m_engine; }
+      void Engine(OpenAI::Engine e) { m_engine = e; }
+      Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery);
+
+    private:
+      OpenAI::Engine m_engine{ nullptr };
+      OpenAI::OpenAIClient m_client{ nullptr };
+    };
     struct OpenAIClient : OpenAIClientT<OpenAIClient>
     {
         OpenAIClient();
         winrt::hstring ApiKey() const noexcept { return m_apiKey; }
         void ApiKey(winrt::hstring v) noexcept;
-
-        winrt::hstring Name() const noexcept { return L"openai"; }
         
         
 
@@ -35,22 +45,17 @@ namespace winrt::OpenAI::implementation
 
         bool UseBearerTokenAuthorization() const noexcept { return m_useBearerTokenAuthorization; }
         void UseBearerTokenAuthorization(bool v) { m_useBearerTokenAuthorization = v; SetAuth(); }
-        OpenAI::Engine Engine() const noexcept { return m_engine; }
-        void Engine(OpenAI::Engine e) { m_engine = e; }
-        Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery);
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };
       winrt::Windows::Web::Http::HttpClient m_client;
       bool m_useBearerTokenAuthorization = true;
-      OpenAI::Engine m_engine{ nullptr };
       void SetAuth();
     };
 }
 
 namespace winrt::OpenAI::factory_implementation
 {
-    struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>
-    {
-    };
+    struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>{};
+    struct GPTSkill : GPTSkillT<GPTSkill, implementation::GPTSkill> {};
 }

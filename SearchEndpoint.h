@@ -1,26 +1,37 @@
 ﻿#pragma once
 #include "SearchEndpoint.g.h"
+#include "SearchSkill.g.h"
 #include <winrt/Windows.Web.Http.h>
 #include <winrt/Windows.Data.Json.h>
 
 namespace winrt::OpenAI::implementation
 {
+  struct SearchSkill : SearchSkillT<SearchSkill>
+  {
+    SearchSkill(OpenAI::SearchEndpoint e) : m_endpoint(e) {}
+    OpenAI::Engine Engine() const noexcept { return m_engine; }
+    void Engine(OpenAI::Engine e) { m_engine = e; }
+    winrt::OpenAI::Engine m_engine{ nullptr };
+    OpenAI::SearchEndpoint SearchEndpoint() const noexcept { return m_endpoint; }
+    void SearchEndpoint(OpenAI::SearchEndpoint e) { m_endpoint = e; }
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, hstring originalQuestion);
+    winrt::hstring Name() const noexcept { return L"search"; }
+  private:
+    OpenAI::SearchEndpoint m_endpoint;
+    winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
+  };
+
   struct SearchEndpoint : SearchEndpointT<SearchEndpoint>
   {
     SearchEndpoint() {
       wchar_t key[200]{};
-      if (GetEnvironmentVariable(L"BING_KEY", key, std::size(key))) {
+      if (GetEnvironmentVariable(L"BING_KEY", key, static_cast<DWORD>(std::size(key)))) {
         ApiKey(key);
       }
     }
 
-    SearchEndpoint(winrt::OpenAI::Engine const& engine) { m_engine = engine; }
-
     winrt::hstring ApiKey() const noexcept { return m_apiKey; }
-    winrt::hstring Name() const noexcept { return L"search"; }
-    
-    OpenAI::Engine Engine() const noexcept { return m_engine; }
-    void Engine(OpenAI::Engine e) { m_engine = e; }
+
 
     void ApiKey(hstring const& value) {
       m_apiKey = value;
@@ -28,7 +39,7 @@ namespace winrt::OpenAI::implementation
     }
     hstring Market() const noexcept { return m_market; }
     void Market(hstring const& value) { m_market = value; };
-    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, hstring originalQuestion);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> SearchAsync(hstring const& query);
 
   private:
     winrt::hstring m_apiKey;
@@ -37,15 +48,11 @@ namespace winrt::OpenAI::implementation
     void SetAuth();
     std::wstring_view m_endpoint{ L"https://api.bing.microsoft.com" };
 
-    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> SearchAsync(hstring const& query);
-    winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
-    winrt::OpenAI::Engine m_engine{ nullptr };
 
   };
 }
 namespace winrt::OpenAI::factory_implementation
 {
-  struct SearchEndpoint : SearchEndpointT<SearchEndpoint, implementation::SearchEndpoint>
-  {
-  };
+  struct SearchEndpoint : SearchEndpointT<SearchEndpoint, implementation::SearchEndpoint> {};
+  struct SearchSkill : SearchSkillT<SearchSkill, implementation::SearchSkill> {};
 }

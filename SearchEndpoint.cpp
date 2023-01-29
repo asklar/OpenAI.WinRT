@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "SearchEndpoint.h"
 #include "SearchEndpoint.g.cpp"
+#include "SearchSkill.g.cpp"
+
 #include <winrt/Windows.Web.Http.Headers.h>
 
 namespace winrt::OpenAI::implementation
@@ -11,9 +13,9 @@ namespace winrt::OpenAI::implementation
     m_client.DefaultRequestHeaders().Append(L"Ocp-Apim-Subscription-Key", m_apiKey);
   }
 
-  winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> SearchEndpoint::GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original)
+  winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> SearchSkill::GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original)
   {
-    auto searchRes = co_await SearchAsync(question);
+    auto searchRes = co_await m_endpoint.SearchAsync(question);
     auto webResults = searchRes.GetNamedObject(L"webPages").GetNamedArray(L"value");
     std::wstring titles;
     for (const auto& v_ : webResults) {
@@ -23,7 +25,7 @@ namespace winrt::OpenAI::implementation
     co_return winrt::hstring{ titles };
   }
 
-  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> SearchEndpoint::ExecuteAsync(winrt::hstring question, winrt::hstring original)
+  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> SearchSkill::ExecuteAsync(winrt::hstring question, winrt::hstring original)
   {
     auto titles = co_await GetTitlesFromSearchResultsAsync(question, original);
     auto client = m_engine.GetSkill(L"openai");

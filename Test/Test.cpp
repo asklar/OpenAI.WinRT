@@ -74,9 +74,9 @@ int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
 
-  auto search = winrt::OpenAI::builders::SearchEndpoint();
+  auto searchEndpoint = winrt::OpenAI::builders::SearchEndpoint();
 
-  auto openai = winrt::OpenAI::builders::OpenAIClient()
+  auto openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
     .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
     .UseBearerTokenAuthorization(false)
     ;
@@ -108,7 +108,13 @@ ASklarIndieMovie.mp4
   });
 
   auto engine = winrt::OpenAI::builders::Engine{}
-  .Skills({ search, openai, calculator, files, sort });
+    .Skills({ 
+      OpenAI::SearchSkill(searchEndpoint),
+      OpenAI::GPTSkill(openaiEndpoint),
+      calculator, 
+      files, 
+      sort,
+  });
   engine.ConnectSkills();
 
 
@@ -145,7 +151,7 @@ std::wcout << "Confidence: " << answer.Confidence() << L"\n";
   //  std::wcout << c.Text() << L"\n";
   //}
   //std::wcout << L"\n\n---\n";
-  auto completionTask2 = openai.GetCompletionAsync(
+  auto completionTask2 = openaiEndpoint.GetCompletionAsync(
     winrt::OpenAI::builders::CompletionRequest{}
     .Prompt(L"git clone ")
     //.Model(L"text-davinci-003")
@@ -167,13 +173,13 @@ std::wcout << "Confidence: " << answer.Confidence() << L"\n";
   using namespace winrt;
 
 
-  auto promptTemplate = openai.CreateTemplate(L"Tell me a {adjective} joke about {content}");
+  auto promptTemplate = openaiEndpoint.CreateTemplate(L"Tell me a {adjective} joke about {content}");
   auto funnyJokeTask = promptTemplate.FormatAsync({ {L"adjective", L"funny"}, {L"content", L"chickens"} });
   auto funnyJoke = funnyJokeTask.get();
 
   std::wcout << L"\n\n" << funnyJoke << L"\n\n\n";
 
-  auto example = openai.CreateFewShotTemplate({ L"word", L"antonym" });
+  auto example = openaiEndpoint.CreateFewShotTemplate({ L"word", L"antonym" });
 
   auto examples = std::vector {
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring> { {L"word", L"happy"}, { L"antonym", L"sad" }}),
@@ -185,7 +191,7 @@ std::wcout << "Confidence: " << answer.Confidence() << L"\n";
   auto fewshot = example.ExecuteAsync(L"big").get();
   std::wcout << L"the opposite of big is " << fewshot.Lookup(L"antonym").begin() << L"\n";
 
-  example = openai.CreateFewShotTemplate({ L"word", L"antonym", L"length" });
+  example = openaiEndpoint.CreateFewShotTemplate({ L"word", L"antonym", L"length" });
   examples = std::vector{
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring> { {L"word", L"happy"}, { L"antonym", L"sad" }, { L"length", L"5" }}),
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring>{ {L"word", L"tall"}, { L"antonym", L"short" }, { L"length", L"4"}}),

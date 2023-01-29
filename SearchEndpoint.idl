@@ -3,12 +3,19 @@ import "Engine.idl";
 namespace OpenAI
 {
     [default_interface]
-    runtimeclass SearchEndpoint : ISkill
+    runtimeclass SearchEndpoint 
     {
         SearchEndpoint();
         String ApiKey;
         String Market;
-
-        Engine Engine;
+        Windows.Foundation.IAsyncOperation<Windows.Data.Json.JsonObject> SearchAsync(String query);
     }
+
+
+  [default_interface]
+  runtimeclass SearchSkill : ISkill
+  {
+    SearchSkill(SearchEndpoint Endpoint);
+  }
+
 }
