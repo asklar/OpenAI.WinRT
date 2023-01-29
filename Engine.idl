@@ -65,12 +65,15 @@ namespace OpenAI
         UInt32 MaxSteps;
         
         Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
+        Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query, Windows.Foundation.Collections.IMap<Guid, Object> basket);
         
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
         void Log(LogLevel level, String skillName, String message);
         event Windows.Foundation.TypedEventHandler<String, String> EventLogged;
         void ConnectSkills();
+
+        Windows.Data.Json.JsonObject ParseApiInput()
     }
 
 }

@@ -58,7 +58,10 @@ namespace winrt::OpenAI::implementation
     winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::ISkill> Skills() { return m_skills; }
 
     
-    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> AskAsync(winrt::hstring query);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> AskAsync(winrt::hstring query, winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> basket);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> AskAsync(winrt::hstring question) {
+      return AskAsync(question, winrt::single_threaded_map(std::unordered_map<winrt::guid, IInspectable>{}));
+    }
 
     winrt::event_token EngineStepSend(winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs> const& handler) { return m_send.add(handler); }
     void EngineStepSend(winrt::event_token const& token) noexcept { m_send.remove(token); }

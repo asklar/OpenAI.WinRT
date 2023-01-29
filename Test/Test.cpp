@@ -7,10 +7,13 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/openai.h>
 #include <winrt/builders/OpenAI.h>
+#include <winrt/builders/helpers.h>
 #include <winrt/Windows.Data.Json.h>
 #include <numeric>
 #include <format>
-
+#include <winrt/Windows.Storage.h>
+#include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.Graphics.Imaging.h>
 #include "../Calculator.h"
 
 using namespace winrt;
@@ -136,18 +139,33 @@ ASklarIndieMovie.mp4
 
   // For debugging purposes:
   engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-        std::wcout << L"Step " << args.Context().Step() << L" [" << args.EndpointName() << L"]  --> " << args.Value() << L"\n";
+        std::wcout << L"Step " << args.Context().Step() << L" --> [" << args.EndpointName() << L"] " << args.Value() << L"\n";
       });
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-    std::wcout << L"Step " << args.Context().Step() << L" [" << args.EndpointName() << L"]  <-- " << args.Value() << L"\n";
+    std::wcout << L"Step " << args.Context().Step() << L" <-- [" << args.EndpointName() << L"] " << args.Value() << L"\n";
     });
   engine.EventLogged([](winrt::hstring skill, winrt::hstring msg) {
     std::wcout << L"[" << skill << "]: " << msg << L"\n";
     });
 
 
-  auto question = L"get the files on my desktop folder and sort them alphabetically";
-  auto answer = engine.AskAsync({ question }).get();
+  auto question =
+    L"list the text items in the basket"
+    ;
+  auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"IMG_20210726_164128.jpg").get();
+  auto stream = sf.OpenReadAsync().get();
+  auto bmpDecoder = winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream).get();
+  auto bmp = bmpDecoder.GetSoftwareBitmapAsync().get();
+    //L"get the files on my desktop folder and sort them alphabetically";
+  auto answer = engine.AskAsync({ question }, 
+    winrt::single_threaded_map<winrt::guid, winrt::Windows::Foundation::IInspectable>(
+      std::unordered_map<winrt::guid, winrt::Windows::Foundation::IInspectable>
+      {
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), winrt::box_value(L"this is a test") },
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+      }
+      )).get();
 
 
   //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();

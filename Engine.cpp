@@ -60,17 +60,18 @@ namespace winrt::OpenAI::implementation
       return L"text/plain";
     }
     auto cn = winrt::get_class_name(o);
-    if (cn == L"Windows.UI.Xaml.Media.SoftwareBitmap") {
+    if (cn == L"Windows.UI.Xaml.Media.Imaging.Bitmap" || cn == L"Windows.Graphics.Imaging.SoftwareBitmap") {
       return L"image/png";
     }
     return L"application/octet-stream";
   }
 
-  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question)
+  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question, winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> basket)
   {
     std::wstring history;
     auto context_ = winrt::make<Context>();
     auto context = winrt::get_self<Context>(context_);
+    context->m_basket = basket;
     
     std::set<std::wstring> questions;
 
@@ -95,8 +96,8 @@ You will reply with either:
 - If you cannot figure out what tool to call, reply with: {{ "error": "explanation of the error" }}
 
 When you call a tool, the tool will give you an answer and you will be asked the original question again, this time with the additional answer from the tool. Stop after the first json.
-The tools will reply with a json like: {{ "tool": "toolName", "output": "..." }}.
-If you give a tool the wrong kind of input, it will reply with {{ "error": "an explanation of what happened" }}
+The tools will reply with "TOOL:" followed by a json like: {{ "tool": "toolName", "output": "..." }}.
+If you give a tool the wrong kind of input, it will reply with "TOOL:" {{ "error": "an explanation of what happened" }}
 When you are called again, you should adjust your call to the tool to fix the problem.
 
 The user is interacting with a window that has content (text and images). 
@@ -148,12 +149,11 @@ The user question: {}
             std::wstring result;
             for (const auto& [k, v] : context->Basket()) {
               if (result != L"") result += L", ";
-              result += std::vformat(LR"({{ "id": {}, "type": "{}" }})",
+              result += std::vformat(LR"({{ "id": "{}", "type": "{}" }})",
                 std::make_wformat_args(winrt::to_hstring(k), GetMimeType(v)));
             }
-            result = LR"({ "basket": [)" + result + L"]}";
-            bestResult.Value(result);
-            bestResult.Confidence(1);
+            result = LR"({ "basket": [)" + result + L"]}\n";
+            bestResult = OpenAI::Answer(result);
           } else {
             // try {
             auto skill = GetSkill(tool);
@@ -161,7 +161,7 @@ The user question: {}
             bestResult = co_await skill.ExecuteAsync(v, context_);
           }
             history += completion.Value() + L"\n";
-            history += bestResult.Value() + L"\n";
+            history += L"TOOL: " +bestResult.Value() + L"\n";
           //} catch (...){}
 
             if (m_receive) { m_receive(*this, CreateStepArgs(context_, tool, bestResult.Value())); }
