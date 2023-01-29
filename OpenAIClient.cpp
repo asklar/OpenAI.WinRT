@@ -287,7 +287,7 @@ namespace winrt::OpenAI::implementation
 
   }
 
-  Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> GPTSkill::ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery)
+  Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> GPTSkill::ExecuteAsync(winrt::hstring query, OpenAI::Context context)
   {
     auto cr = winrt::OpenAI::CompletionRequest{};
     cr.MaxTokens(2000);

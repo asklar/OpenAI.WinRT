@@ -5,6 +5,7 @@
 #endif
 #include "Answer.g.cpp"
 #include "Skill.g.cpp"
+#include "Context.g.cpp"
 
 #include <winrt/Windows.Data.Json.h>
 #include <set>
@@ -41,12 +42,22 @@ namespace winrt::OpenAI::implementation
     return value;
   }
 
+  auto CreateStepArgs(OpenAI::Context context, std::wstring_view toolName, std::wstring_view question)
+  {
+    auto stepArgs = winrt::make<EngineStepEventArgs>();
+    auto sa = winrt::get_self<EngineStepEventArgs>(stepArgs);
+    sa->m_context = context;
+    sa->m_endpointName = winrt::hstring{ toolName };
+    sa->m_value = winrt::hstring{ question };
+    return stepArgs;
+  }
 
   winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question)
   {
     std::wstring history;
-
-    auto round = 0u;
+    auto context_ = winrt::make<Context>();
+    auto context = winrt::get_self<Context>(context_);
+    
     std::set<std::wstring> questions;
 
     auto skillTemplate = LR"({{ "tool": "{}" }})";
@@ -58,7 +69,7 @@ namespace winrt::OpenAI::implementation
       skillsJson += snippet;
     }
 
-    while (round < m_maxSteps || m_maxSteps == -1) {
+    while (context->m_step < m_maxSteps || m_maxSteps == -1) {
       auto cr = winrt::OpenAI::CompletionRequest{};
       auto mainQuery = std::vformat(LR"(You are in a 3-way conversation with the user and a REPL. Your task is to drive the REPL in order to answer the user's question. The REPL provides tools to get more information to answer the user questions accurately. 
 The REPL tools are:
@@ -80,8 +91,9 @@ Here's the user question: {}
 Don't provide an explanation, only return the json.
 )", std::make_wformat_args(skillsJson, question, history));
       
-      if (m_send && round == 0) m_send(*this, winrt::OpenAI::EngineStepEventArgs{ round++, L"OpenAI", winrt::hstring{ question } });
-      auto completion = co_await Client().ExecuteAsync(mainQuery, question);
+      auto stepArgs = CreateStepArgs(context_, L"OpenAI", question);
+      if (m_send && context->m_step == 0) m_send(*this, stepArgs);
+      auto completion = co_await Client().ExecuteAsync(mainQuery, context_);
       
       JsonObject completionJson;
       if (JsonObject::TryParse(completion.Value(), completionJson)) {
@@ -90,7 +102,7 @@ Don't provide an explanation, only return the json.
           auto answer = StringFromJson(completionJson, L"answer");
           a.Value(answer);
           a.Confidence(completionJson.GetNamedNumber(L"confidence"));
-          if (m_receive) { m_receive(*this, winrt::OpenAI::EngineStepEventArgs{ round, L"OpenAI", a.Value() }); }
+          if (m_receive) { m_receive(*this, CreateStepArgs(context_, L"OpenAI", a.Value())); }
           co_return a;
           break;
         } else if (completionJson.HasKey(L"tool")) {
@@ -98,20 +110,20 @@ Don't provide an explanation, only return the json.
           winrt::hstring value{ StringFromJson(completionJson, L"value") };
           
           //} = completionJson.GetNamedString(L"value");
-          if (m_send) { m_send(*this, winrt::OpenAI::EngineStepEventArgs{ round, tool, value }); }
+          if (m_send) { m_send(*this, CreateStepArgs(context_, tool, value)); }
           winrt::OpenAI::Answer bestResult{ nullptr };
 
           // try {
             auto skill = GetSkill(tool);
-            bestResult = co_await skill.ExecuteAsync(value, question);
+            bestResult = co_await skill.ExecuteAsync(value, context_);
             history += completion.Value() + L"\n";
             history += bestResult.Value() + L"\n";
           //} catch (...){}
 
-          if (m_receive) { m_receive(*this, winrt::OpenAI::EngineStepEventArgs{ round, tool, bestResult.Value() }); }
+            if (m_receive) { m_receive(*this, CreateStepArgs(context_, tool, bestResult.Value())); }
 
         }
-        round++;
+        context->m_step++;
       } else {
         throw winrt::hresult_invalid_argument();
       }

@@ -14,11 +14,11 @@ namespace winrt::OpenAI::implementation
     winrt::OpenAI::Engine m_engine{ nullptr };
     OpenAI::SearchEndpoint SearchEndpoint() const noexcept { return m_endpoint; }
     void SearchEndpoint(OpenAI::SearchEndpoint e) { m_endpoint = e; }
-    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, hstring originalQuestion);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, OpenAI::Context context);
     winrt::hstring Name() const noexcept { return L"search"; }
   private:
     OpenAI::SearchEndpoint m_endpoint;
-    winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
+    winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question);
   };
 
   struct SearchEndpoint : SearchEndpointT<SearchEndpoint>

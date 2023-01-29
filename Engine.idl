@@ -11,22 +11,33 @@ namespace OpenAI
     Double Confidence;
   }
 
-    struct EngineStepEventArgs {
-      UInt32 StepNumber;
-      String EndpointName;
-      String Value;
+
+  [default_interface]
+  runtimeclass Context
+  {
+    String OriginalQuestion {get; };
+    UInt32 Step{ get; };
+  }
+
+  [default_interface]
+  runtimeclass EngineStepEventArgs {
+      Context Context {get; };
+      String EndpointName{ get; };
+      String Value{ get; };
     };
 
   runtimeclass Engine;
 
+
   interface ISkill
   {
     String Name { get; };
-    Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, String originalQuestion);
+    Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, Context context);
     Engine Engine;
   }
 
-  delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, String originalQuestion, Engine engine);
+
+  delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, Context context, Engine engine);
 
   [default_interface]
   runtimeclass Skill : ISkill
@@ -44,7 +55,7 @@ namespace OpenAI
         ISkill GetSkill(String name);
 
         UInt32 MaxSteps;
-
+        
         Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
 
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;

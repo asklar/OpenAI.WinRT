@@ -3,6 +3,8 @@
 #include "Engine.g.h"
 #include "Answer.g.h"
 #include "Skill.g.h"
+#include "Context.g.h"
+#include "EngineStepEventArgs.g.h"
 
 namespace winrt::OpenAI::implementation
 {
@@ -26,7 +28,7 @@ namespace winrt::OpenAI::implementation
     Skill(winrt::hstring name, SkillHandlerAsync handler) { m_name = name; m_handler = handler; }
 
     winrt::hstring Name() const noexcept { return m_name; }
-    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, hstring originalQuestion) { return m_handler(query, originalQuestion, m_engine); }
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(hstring query, OpenAI::Context context) { return m_handler(query, context, m_engine); }
     OpenAI::Engine Engine() const noexcept { return m_engine; }
     void Engine(const OpenAI::Engine& e) { m_engine = e; }
     winrt::hstring m_name;
@@ -34,12 +36,20 @@ namespace winrt::OpenAI::implementation
     winrt::OpenAI::Engine m_engine{ nullptr };
   };
 
+  struct Context : ContextT<Context>
+  {
+    winrt::hstring OriginalQuestion() const noexcept { return m_originalQuestion; }
+    uint32_t Step() const noexcept { return m_step; }
+    winrt::hstring m_originalQuestion;
+    uint32_t m_step{};
+  };
   struct Engine : EngineT<Engine>
   {
     Engine();
 
     winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::ISkill> Skills() { return m_skills; }
 
+    
     winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> AskAsync(winrt::hstring query);
 
     winrt::event_token EngineStepSend(winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs> const& handler) { return m_send.add(handler); }
@@ -72,9 +82,23 @@ namespace winrt::OpenAI::implementation
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_send;
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_receive;
     uint32_t m_maxSteps{ 5 };
-
-
   };
+
+    struct EngineStepEventArgs : EngineStepEventArgsT<EngineStepEventArgs>
+    {
+      EngineStepEventArgs() = default;
+
+      winrt::OpenAI::Context Context() { return m_context; }
+      
+      winrt::hstring EndpointName() { return m_endpointName; }
+      
+      winrt::hstring Value() { return m_value; }
+      
+      OpenAI::Context m_context{ nullptr };
+      winrt::hstring m_endpointName;
+      winrt::hstring m_value;
+    };
+
 }
 
 

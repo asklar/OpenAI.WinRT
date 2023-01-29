@@ -6,10 +6,7 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/openai.h>
-#include <winrt/builders/OpenAI.CompletionRequest.h>
-#include <winrt/builders/OpenAI.OpenAIClient.h>
-#include <winrt/builders/OpenAI.SearchEndpoint.h>
-#include <winrt/builders/OpenAI.Engine.h>
+#include <winrt/builders/OpenAI.h>
 #include <winrt/Windows.Data.Json.h>
 #include <numeric>
 #include <format>
@@ -19,7 +16,7 @@
 using namespace winrt;
 using namespace Windows::Data::Json;
 
-winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) {
+winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) {
   auto a = OpenAI::Answer{};
 
   try {
@@ -37,7 +34,7 @@ The expression is: {}
 
 
   auto client = engine.GetSkill(L"openai");
-  auto completion = co_await client.ExecuteAsync(prompt, original);
+  auto completion = co_await client.ExecuteAsync(prompt, context);
   auto completion1 = completion.Value();
   JsonObject completionJson;
   if (JsonObject::TryParse(completion1, completionJson)) {
@@ -50,7 +47,7 @@ The expression is: {}
 }
 
 
-auto Sort(const winrt::hstring& expression, const winrt::hstring& original, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+auto Sort(const winrt::hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
   std::vector<std::wstring> items;
 
   JsonArray arr;
@@ -85,7 +82,7 @@ int main()
 
   auto sort = winrt::OpenAI::Skill(L"sortListAlphabetical", { &Sort });
 
-  auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+  auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
     auto client = engine.GetSkill(L"openai");
     auto intent = co_await client.ExecuteAsync(std::vformat(LR"(You are an assistant helping the user with their files on Windows. 
 
@@ -95,10 +92,10 @@ or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
 
 Here are the files the user wants: {}
 
-)", std::make_wformat_args(expression)), original);
+)", std::make_wformat_args(expression)), context);
     auto text = intent.Value();
     auto json = JsonObject::Parse(text);
-    std::wcout << "[files skill] " << text << "\n";
+    std::wcout << "[files] " << text << "\n";
     co_return OpenAI::Answer(LR"(hammerthrow.txt
 taylorSwiftTopHits.docx
 AgneHammerThrowRecord.md
@@ -121,10 +118,10 @@ ASklarIndieMovie.mp4
 
   // For debugging purposes:
   engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-        std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  --> " << args.Value << L"\n";
+        std::wcout << L"Step " << args.Context().Step() << L" [" << args.EndpointName() << L"]  --> " << args.Value() << L"\n";
       });
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-    std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  <-- " << args.Value << L"\n";
+    std::wcout << L"Step " << args.Context().Step() << L" [" << args.EndpointName() << L"]  <-- " << args.Value() << L"\n";
     });
 
 

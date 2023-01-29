@@ -21,7 +21,7 @@ namespace winrt::OpenAI::implementation
       winrt::hstring Name() const noexcept { return L"openai"; }
       OpenAI::Engine Engine() const noexcept { return m_engine; }
       void Engine(OpenAI::Engine e) { m_engine = e; }
-      Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, winrt::hstring originalQuery);
+      Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, OpenAI::Context context);
 
     private:
       OpenAI::Engine m_engine{ nullptr };
