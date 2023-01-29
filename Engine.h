@@ -38,10 +38,18 @@ namespace winrt::OpenAI::implementation
 
   struct Context : ContextT<Context>
   {
+    Context() {
+      m_basket = winrt::single_threaded_map<winrt::guid, IInspectable>(std::unordered_map<winrt::guid, IInspectable>{});
+    }
     winrt::hstring OriginalQuestion() const noexcept { return m_originalQuestion; }
     uint32_t Step() const noexcept { return m_step; }
+    winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> Basket() { return m_basket; }
+    
+
     winrt::hstring m_originalQuestion;
     uint32_t m_step{};
+    winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> m_basket{ nullptr };
+      
   };
   struct Engine : EngineT<Engine>
   {

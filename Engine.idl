@@ -17,6 +17,8 @@ namespace OpenAI
   {
     String OriginalQuestion {get; };
     UInt32 Step{ get; };
+
+    Windows.Foundation.Collections.IMap<Guid, Object> Basket{ get; };
   }
 
   [default_interface]
@@ -57,7 +59,7 @@ namespace OpenAI
         UInt32 MaxSteps;
         
         Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
-
+        
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
 
