@@ -1,4 +1,4 @@
-// Test.cpp : This file contains the 'main' function. Program execution begins and ends there.
+﻿// Test.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 #include <iostream>
@@ -13,9 +13,8 @@
 #include <winrt/Windows.Data.Json.h>
 #include <numeric>
 #include <format>
-
 #include "../Calculator.h"
-
+#include <Windows.h>
 using namespace winrt;
 using namespace Windows::Data::Json;
 
@@ -107,23 +106,49 @@ ASklarIndieMovie.mp4
 )");
   });
 
+
+  
+  auto SetForegroundColor = [](uint32_t r) {
+    return std::vformat(L"\033[38;2;{};{};{}m", std::make_wformat_args(GetRValue(r), GetGValue(r), GetBValue(r)));
+  }; 
+  
+  std::wcout << SetForegroundColor(RGB(0xf3, 0x4f, 0x1c)) << L"\xdb";// \x2588";
+  std::wcout << SetForegroundColor(RGB(0x7F, 0xBC, 0x00)) << L"\xdb";
+  std::wcout << L"\033[0m"; 
+  std::wcout << " Microsoft AI\n";
+
+  std::wcout << SetForegroundColor(RGB(0xFF,0xBA, 0x01)) << L"\xdb";
+  std::wcout << SetForegroundColor(RGB(0x01, 0xA6, 0xF0)) << L"\xdb";
+  std::wcout << L"\033[0m"; 
+  std::wcout << L" " << std::wstring(12, (wchar_t)196) << L"\n\n";
+
+  std::wcout << SetForegroundColor(RGB(0x28,0x68,0xff)) << L"\033[1m";
+  std::wcout << "What can I do for you? ";
+  std::wcout << L"\033[0m";
+  
+  std::wstring question;
+  std::getline(std::wcin, question);
+
+
   auto engine = winrt::OpenAI::builders::Engine{}
   .Skills({ search, openai, calculator, files, sort });
   engine.ConnectSkills();
 
-
-
   // For debugging purposes:
   engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-        std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  --> " << args.Value << L"\n";
-      });
+    std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  --> " << args.Value << L"\n";
+    });
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
     std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  <-- " << args.Value << L"\n";
     });
+  auto answer = engine.AskAsync({ question }).get();
 
-
-  auto answer = engine.AskAsync({ L"get the files on my desktop folder and sort them alphabetically" }).get();
-
+  //std::wcout << "Q: " << question << L"\n";
+  std::wcout << SetForegroundColor(RGB(0x28, 0x68, 0xff)) << L"\033[1m";
+  std::wcout << "Here you go:\n\t";
+  std::wcout << L"\033[0m"; 
+  std::wcout << answer.Value() << L"\n";
+  std::wcout << "Confidence: " << answer.Confidence() << L"\n";
 
   //auto answer = engine.AskAsync({ L"I need to find out who Olivia Wilde's boyfriend is and then calculate his age raised to the 0.23 power." }).get();
 
@@ -132,12 +157,10 @@ auto question = L"who is Olivia Wilde's boyfriend";
 
 auto answer = engine.AskAsync({ question }).get();
 
-std::wcout << "Q: " << question << L"\n";
-std::wcout << "A: " << answer.Value() << L"\n";
-std::wcout << "Confidence: " << answer.Confidence() << L"\n";
 */
 
 
+  return 0;
 
   //auto completionTask = openai.GetCompletionAsync(L"git clone ", L"text-davinci-003");
   //auto completions = completionTask.get();
