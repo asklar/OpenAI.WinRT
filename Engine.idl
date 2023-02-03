@@ -11,22 +11,35 @@ namespace OpenAI
     Double Confidence;
   }
 
-    struct EngineStepEventArgs {
-      UInt32 StepNumber;
-      String EndpointName;
-      String Value;
+
+  [default_interface]
+  runtimeclass Context
+  {
+    String OriginalQuestion {get; };
+    UInt32 Step{ get; };
+
+    Windows.Foundation.Collections.IMap<Guid, Object> Basket{ get; };
+  }
+
+  [default_interface]
+  runtimeclass EngineStepEventArgs {
+      Context Context {get; };
+      String EndpointName{ get; };
+      String Value{ get; };
     };
 
   runtimeclass Engine;
 
+
   interface ISkill
   {
     String Name { get; };
-    Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, String originalQuestion);
+    Windows.Foundation.IAsyncOperation<Answer> ExecuteAsync(String question, Context context);
     Engine Engine;
   }
 
-  delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, String originalQuestion, Engine engine);
+
+  delegate Windows.Foundation.IAsyncOperation<Answer> SkillHandlerAsync(String question, Context context, Engine engine);
 
   [default_interface]
   runtimeclass Skill : ISkill
@@ -34,6 +47,12 @@ namespace OpenAI
     Skill(String name, SkillHandlerAsync handler);
   }
 
+    enum LogLevel
+  {
+    Informational,
+    Warning,
+    Error
+  };
 
     [default_interface]
     runtimeclass Engine
@@ -44,13 +63,16 @@ namespace OpenAI
         ISkill GetSkill(String name);
 
         UInt32 MaxSteps;
-
+        
         Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query);
-
+        Windows.Foundation.IAsyncOperation<Answer> AskAsync(String query, Windows.Foundation.Collections.IMap<Guid, Object> basket);
+        
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepSend;
         event Windows.Foundation.TypedEventHandler<Engine, EngineStepEventArgs> EngineStepReceive;
-
+        void Log(LogLevel level, String skillName, String message);
+        event Windows.Foundation.TypedEventHandler<String, String> EventLogged;
         void ConnectSkills();
+
     }
 
 }

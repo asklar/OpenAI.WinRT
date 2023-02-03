@@ -5,6 +5,7 @@
 #endif
 #include "Answer.g.cpp"
 #include "Skill.g.cpp"
+#include "Context.g.cpp"
 
 #include <winrt/Windows.Data.Json.h>
 #include <set>
@@ -36,17 +37,42 @@ namespace winrt::OpenAI::implementation
       value = std::accumulate(arr.begin(), arr.end(), std::wstring{ L"[" }, [](const auto& i, const auto& v) { return i + L",\"" + v.GetString() + L"\""; }).erase(1, 1) + L"]";
       break;
     }
+    default:
+      value = v.Stringify();
+      break;
 
     }
     return value;
   }
 
+  auto CreateStepArgs(OpenAI::Context context, std::wstring_view toolName, std::wstring_view question)
+  {
+    auto stepArgs = winrt::make<EngineStepEventArgs>();
+    auto sa = winrt::get_self<EngineStepEventArgs>(stepArgs);
+    sa->m_context = context;
+    sa->m_endpointName = winrt::hstring{ toolName };
+    sa->m_value = winrt::hstring{ question };
+    return stepArgs;
+  }
 
-  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question)
+  winrt::hstring GetMimeType(winrt::Windows::Foundation::IInspectable o) {
+    if (o.try_as<winrt::hstring>()) {
+      return L"text/plain";
+    }
+    auto cn = winrt::get_class_name(o);
+    if (cn == L"Windows.UI.Xaml.Media.Imaging.Bitmap" || cn == L"Windows.Graphics.Imaging.SoftwareBitmap") {
+      return L"image/png";
+    }
+    return L"application/octet-stream";
+  }
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question, winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> basket)
   {
     std::wstring history;
-
-    auto round = 0u;
+    auto context_ = winrt::make<Context>();
+    auto context = winrt::get_self<Context>(context_);
+    context->m_basket = basket;
+    
     std::set<std::wstring> questions;
 
     auto skillTemplate = LR"({{ "tool": "{}" }})";
@@ -58,30 +84,48 @@ namespace winrt::OpenAI::implementation
       skillsJson += snippet;
     }
 
-    while (round < m_maxSteps || m_maxSteps == -1) {
-      auto cr = winrt::OpenAI::CompletionRequest{};
-      auto mainQuery = std::vformat(LR"(You are in a 3-way conversation with the user and a REPL. Your task is to drive the REPL in order to answer the user's question. The REPL provides tools to get more information to answer the user questions accurately. 
-The REPL tools are:
-{{ [ {} ] }}
+    constexpr std::wstring_view mainQueryTemplate{ 
+LR"(You are part of a conversation with the user and a set of tools which you can call to help you answer user questions. 
+The system that orchestrates the conversation system has a memory ("basket") that can store items of different types (files, images, documents, text). 
+When the user refers to "this file" or "that image", they are referring to items in this basket.
 
-If you can answer the question, do so in json form as {{ "answer": "...", "confidence": ... }}). The confidence is a number between 0 and 1 about how confident you are in your answer.
-If you cannot answer the question and need more information, reply with a json with a call to an appropriate REPL tool to obtain more information and nothing more.  Only one call to a tool should be specified.
-The format of the json for calling a REPL tool is {{"tool": "...", "value": "..."}}
-Do not call more than one tool at a time.
-The calculator REPL tool accepts the following operators: +,-,*,/,** and only operates on numbers.
-To call the calculator tool to calculate 23+42 you would reply with {{"tool": "calculator", "value":"23+42"}}
-To call the search tool to search for Joe Biden you would reply with {{"tool": "search", "value":"Joe Biden"}}
-Each call to a tool should be for the simplest question possible. Break down bigger questions into smaller ones and only return the first (smallest) question.
+Your job is to break down the problem into individual steps. To answer the user question, we will chain the results from previous steps. 
+You will reply with either:
+- one call to one tool (only the first tool) in json format in the format: {{ "tool": the tool name , "input": the input to the tool }}. 
+- one answer, in json format in the format:   {{ "answer": "...", "confidence": ... }}. The confidence is a number between 0 and 1 about how confident you are in your answer.
+- If you cannot figure out what tool to call, reply with: {{ "error": "explanation of the error" }}
 
-Here's the user question: {}
+When you call a tool, the tool will give you an answer and you will be asked the original question again, this time with the additional answer from the tool. Stop after the first json.
+The tools will reply with "TOOL:" followed by a json like: {{ "tool": "toolName", "output": "..." }}.
+If you give a tool the wrong kind of input, it will reply with "TOOL:" {{ "error": "an explanation of what happened" }}
+When you are called again, you should adjust your call to the tool to fix the problem.
+
+The user is interacting with a window that has content (text and images). 
+The content can be obtained by taking a screenshot of the window with the GetWindow tool which will store the screenshot in the basket and return its id.
+
+Here are the available tools with examples of possible input to each and what they each return:
+{{ "tools": [
+  {}
+  {{ "name": "AnalyzeImage", "inputType": "an id returned by ShowMemory", "description": "returns a json with the description of the image whose ID was passed in as input" }},
+  {{ "name": "ShowBasket", "inputType": "{{}}", "description": "returns a json of the contents of the basket, which is a json array that has id and type, user context is stored in the basket  and you can use this tool to access it." }},
+  {{ "name": "GetWindow", "inputType": "{{}}", "description": "takes a screenshot of the window and returns its id in the basket" }}
+  ] }}
+
+When picking an item from the basket, make sure you pick one with the right type per the user's question.
+
+Do not repeat the user question.
+The user question: {}
 
 {}
+)" };
 
-Don't provide an explanation, only return the json.
-)", std::make_wformat_args(skillsJson, question, history));
+    while (context->m_step < m_maxSteps || m_maxSteps == -1) {
+      auto cr = winrt::OpenAI::CompletionRequest{};
+      auto mainQuery = std::vformat(mainQueryTemplate, std::make_wformat_args(skillsJson, question, history));
       
-      if (m_send && round == 0) m_send(*this, winrt::OpenAI::EngineStepEventArgs{ round++, L"OpenAI", winrt::hstring{ question } });
-      auto completion = co_await Client().ExecuteAsync(mainQuery, question);
+      auto stepArgs = CreateStepArgs(context_, L"OpenAI", question);
+      if (m_send && context->m_step == 0) m_send(*this, stepArgs);
+      auto completion = co_await Client().ExecuteAsync(mainQuery, context_);
       
       JsonObject completionJson;
       if (JsonObject::TryParse(completion.Value(), completionJson)) {
@@ -90,30 +134,44 @@ Don't provide an explanation, only return the json.
           auto answer = StringFromJson(completionJson, L"answer");
           a.Value(answer);
           a.Confidence(completionJson.GetNamedNumber(L"confidence"));
-          if (m_receive) { m_receive(*this, winrt::OpenAI::EngineStepEventArgs{ round, L"OpenAI", a.Value() }); }
+          if (m_receive) { m_receive(*this, CreateStepArgs(context_, L"OpenAI", a.Value())); }
           co_return a;
           break;
         } else if (completionJson.HasKey(L"tool")) {
           auto tool = completionJson.GetNamedString(L"tool");
-          winrt::hstring value{ StringFromJson(completionJson, L"value") };
-          
+          winrt::hstring value{ StringFromJson(completionJson, L"input") };
+
           //} = completionJson.GetNamedString(L"value");
-          if (m_send) { m_send(*this, winrt::OpenAI::EngineStepEventArgs{ round, tool, value }); }
+          if (m_send) { m_send(*this, CreateStepArgs(context_, tool, value)); }
           winrt::OpenAI::Answer bestResult{ nullptr };
 
-          // try {
+          if (tool == L"ShowBasket") {
+            std::wstring result;
+            for (const auto& [k, v] : context->Basket()) {
+              if (result != L"") result += L", ";
+              result += std::vformat(LR"({{ "id": "{}", "type": "{}" }})",
+                std::make_wformat_args(winrt::to_hstring(k), GetMimeType(v)));
+            }
+            result = LR"({ "basket": [)" + result + L"]}\n";
+            bestResult = OpenAI::Answer(result);
+          } else {
+            // try {
             auto skill = GetSkill(tool);
-            bestResult = co_await skill.ExecuteAsync(value, question);
+            auto v{ value };
+            bestResult = co_await skill.ExecuteAsync(v, context_);
+          }
             history += completion.Value() + L"\n";
-            history += bestResult.Value() + L"\n";
+            history += L"TOOL: " +bestResult.Value() + L"\n";
           //} catch (...){}
 
-          if (m_receive) { m_receive(*this, winrt::OpenAI::EngineStepEventArgs{ round, tool, bestResult.Value() }); }
+            if (m_receive) { m_receive(*this, CreateStepArgs(context_, tool, bestResult.Value())); }
 
         }
-        round++;
+        context->m_step++;
       } else {
-        throw winrt::hresult_invalid_argument();
+        auto lastResponse = completion.Value();
+        Log(OpenAI::LogLevel::Error, L"Engine", L"invalid response from GPT: " + lastResponse);
+        throw winrt::hresult_invalid_argument{};
       }
     }
 

@@ -6,19 +6,20 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/openai.h>
-#include <winrt/builders/OpenAI.CompletionRequest.h>
-#include <winrt/builders/OpenAI.OpenAIClient.h>
-#include <winrt/builders/OpenAI.SearchEndpoint.h>
-#include <winrt/builders/OpenAI.Engine.h>
+#include <winrt/builders/OpenAI.h>
+#include <winrt/builders/helpers.h>
 #include <winrt/Windows.Data.Json.h>
 #include <numeric>
 #include <format>
+#include <winrt/Windows.Storage.h>
+#include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.Graphics.Imaging.h>
 #include "../Calculator.h"
 #include <Windows.h>
 using namespace winrt;
 using namespace Windows::Data::Json;
 
-winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) {
+winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) {
   auto a = OpenAI::Answer{};
 
   try {
@@ -36,7 +37,7 @@ The expression is: {}
 
 
   auto client = engine.GetSkill(L"openai");
-  auto completion = co_await client.ExecuteAsync(prompt, original);
+  auto completion = co_await client.ExecuteAsync(prompt, context);
   auto completion1 = completion.Value();
   JsonObject completionJson;
   if (JsonObject::TryParse(completion1, completionJson)) {
@@ -49,11 +50,24 @@ The expression is: {}
 }
 
 
-auto Sort(const winrt::hstring& expression, const winrt::hstring& original, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
-  std::vector<std::wstring> items;
+auto Sort(const winrt::hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+  auto client = engine.GetSkill(L"openai");
 
-  JsonArray arr;
-  if (JsonArray::TryParse(expression, arr)) {
+  auto query = std::vformat(LR"(The user has provided a list of items. 
+Reply with the items formatted in a json: {{ "items": [ "...", "...", ...] }} 
+Each item in the array should be enclosed by " (quotes).
+
+The items:
+{}
+)", std::make_wformat_args(expression));
+  auto eng{ engine };
+  auto input = co_await client.ExecuteAsync(query, context);
+  
+  eng.Log(OpenAI::LogLevel::Informational, winrt::hstring{ L"sortAlphabetical" }, input.Value());
+  JsonObject obj;
+  std::vector<std::wstring> items;
+  if (JsonObject::TryParse(input.Value(), obj)) {
+    auto arr = obj.GetNamedArray(L"items");
     for (const auto& a : arr) items.push_back(a.GetString().c_str());
   } else {
     std::wstringstream ss(expression.c_str());
@@ -73,9 +87,9 @@ int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
 
-  auto search = winrt::OpenAI::builders::SearchEndpoint();
+  auto searchEndpoint = winrt::OpenAI::builders::SearchEndpoint();
 
-  auto openai = winrt::OpenAI::builders::OpenAIClient()
+  auto openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
     .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
     .UseBearerTokenAuthorization(false)
     ;
@@ -84,26 +98,31 @@ int main()
 
   auto sort = winrt::OpenAI::Skill(L"sortListAlphabetical", { &Sort });
 
-  auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, winrt::hstring original, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+  auto files = winrt::OpenAI::Skill(L"files", [](winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
     auto client = engine.GetSkill(L"openai");
+    std::wstring exp{ expression };
     auto intent = co_await client.ExecuteAsync(std::vformat(LR"(You are an assistant helping the user with their files on Windows. 
 
-Respond with a json that contains the folder and the set of files to fetch. Use * for wildcards.
+Respond with a well-formed json that contains the folder and the set of files to fetch. Use * for wildcards.
 For example: {{ "folder": "documents", "filespec": "*" }} to fetch all files from the documents folder.
 or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
 
 Here are the files the user wants: {}
 
-)", std::make_wformat_args(expression)), original);
+)", std::make_wformat_args(exp)), context);
     auto text = intent.Value();
-    auto json = JsonObject::Parse(text);
-    std::wcout << "[files skill] " << text << "\n";
-    co_return OpenAI::Answer(LR"(hammerthrow.txt
+    JsonObject json;
+    if (JsonObject::TryParse(text, json)) {
+      std::wcout << "[files] " << text << "\n";
+      co_return OpenAI::Answer(LR"(hammerthrow.txt
 taylorSwiftTopHits.docx
 AgneHammerThrowRecord.md
 OpenAIMonetizationPlan.pptx
 ASklarIndieMovie.mp4
 )");
+    } else {
+      co_return OpenAI::Answer(LR"({ "error": "input was not a valid json")");
+    }
   });
 
 
@@ -131,17 +150,42 @@ ASklarIndieMovie.mp4
 
 
   auto engine = winrt::OpenAI::builders::Engine{}
-  .Skills({ search, openai, calculator, files, sort });
+    .Skills({ 
+      OpenAI::SearchSkill(searchEndpoint),
+      OpenAI::GPTSkill(openaiEndpoint),
+      calculator, 
+      files, 
+      sort,
+  });
   engine.ConnectSkills();
 
   // For debugging purposes:
   engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-    std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  --> " << args.Value << L"\n";
-    });
+        std::wcout << L"Step " << args.Context().Step() << L" --> [" << args.EndpointName() << L"] " << args.Value() << L"\n";
+      });
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-    std::wcout << L"Step " << args.StepNumber << L" [" << args.EndpointName << L"]  <-- " << args.Value << L"\n";
+    std::wcout << L"Step " << args.Context().Step() << L" <-- [" << args.EndpointName() << L"] " << args.Value() << L"\n";
     });
-  auto answer = engine.AskAsync({ question }).get();
+  engine.EventLogged([](winrt::hstring skill, winrt::hstring msg) {
+    std::wcout << L"[" << skill << "]: " << msg << L"\n";
+    });
+  
+
+  auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"BlueStacks_ScreenShot.jpg").get();
+  auto stream = sf.OpenReadAsync().get();
+  auto bmpDecoder = winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream).get();
+  auto bmp = bmpDecoder.GetSoftwareBitmapAsync().get();
+    //L"get the files on my desktop folder and sort them alphabetically";
+  
+  auto answer = engine.AskAsync({ question }, 
+    winrt::single_threaded_map<winrt::guid, winrt::Windows::Foundation::IInspectable>(
+      std::unordered_map<winrt::guid, winrt::Windows::Foundation::IInspectable>
+      {
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), winrt::box_value(L"this is a test") },
+        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+      }
+      )).get();
 
   //std::wcout << "Q: " << question << L"\n";
   std::wcout << SetForegroundColor(RGB(0x28, 0x68, 0xff)) << L"\033[1m";
@@ -168,7 +212,7 @@ auto answer = engine.AskAsync({ question }).get();
   //  std::wcout << c.Text() << L"\n";
   //}
   //std::wcout << L"\n\n---\n";
-  auto completionTask2 = openai.GetCompletionAsync(
+  auto completionTask2 = openaiEndpoint.GetCompletionAsync(
     winrt::OpenAI::builders::CompletionRequest{}
     .Prompt(L"git clone ")
     //.Model(L"text-davinci-003")
@@ -190,13 +234,13 @@ auto answer = engine.AskAsync({ question }).get();
   using namespace winrt;
 
 
-  auto promptTemplate = openai.CreateTemplate(L"Tell me a {adjective} joke about {content}");
+  auto promptTemplate = openaiEndpoint.CreateTemplate(L"Tell me a {adjective} joke about {content}");
   auto funnyJokeTask = promptTemplate.FormatAsync({ {L"adjective", L"funny"}, {L"content", L"chickens"} });
   auto funnyJoke = funnyJokeTask.get();
 
   std::wcout << L"\n\n" << funnyJoke << L"\n\n\n";
 
-  auto example = openai.CreateFewShotTemplate({ L"word", L"antonym" });
+  auto example = openaiEndpoint.CreateFewShotTemplate({ L"word", L"antonym" });
 
   auto examples = std::vector {
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring> { {L"word", L"happy"}, { L"antonym", L"sad" }}),
@@ -208,7 +252,7 @@ auto answer = engine.AskAsync({ question }).get();
   auto fewshot = example.ExecuteAsync(L"big").get();
   std::wcout << L"the opposite of big is " << fewshot.Lookup(L"antonym").begin() << L"\n";
 
-  example = openai.CreateFewShotTemplate({ L"word", L"antonym", L"length" });
+  example = openaiEndpoint.CreateFewShotTemplate({ L"word", L"antonym", L"length" });
   examples = std::vector{
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring> { {L"word", L"happy"}, { L"antonym", L"sad" }, { L"length", L"5" }}),
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring>{ {L"word", L"tall"}, { L"antonym", L"short" }, { L"length", L"4"}}),
