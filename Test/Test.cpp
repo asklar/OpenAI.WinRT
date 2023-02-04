@@ -7,11 +7,21 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/openai.h>
 #include <winrt/builders/OpenAI.CompletionRequest.h>
+#include <winrt/builders/OpenAI.OpenAIClient.h>
+
+using namespace winrt::Windows::Foundation;
 
 int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
-  auto openai = winrt::OpenAI::OpenAIClient{};
+  auto openai = winrt::OpenAI::builders::OpenAIClient{}
+    ;
+
+
+  auto emTask = openai.GetEmbeddingAsync(L"the quick brown fox");
+  auto emVector = emTask.get();
+  std::array<double, 1024> embedding;
+  emVector.GetMany(0, winrt::array_view(embedding));
   //auto completionTask = openai.GetCompletionAsync(L"git clone ", L"text-davinci-003");
   //auto completions = completionTask.get();
   //for (auto const& c : completions) {

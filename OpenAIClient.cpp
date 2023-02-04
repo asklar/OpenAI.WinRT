@@ -293,4 +293,29 @@ namespace winrt::OpenAI::implementation
     return promptTemplate;
 
   }
+
+  Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<double>> OpenAIClient::GetEmbeddingAsync(winrt::hstring prompt) {
+    auto input = JsonValue::CreateStringValue(prompt);
+    auto request = JsonObject();
+    request.Insert(L"input", input);
+    auto reqStr = request.Stringify();
+    auto content = winrt::HttpStringContent(reqStr, winrt::UnicodeEncoding::Utf8, L"application/json");
+    auto response = co_await m_client.PostAsync(EmbeddingUri(), content);
+    auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
+    auto statusCode = response.StatusCode();
+
+    response.EnsureSuccessStatusCode();
+    auto responseJson = JsonObject::Parse(responseJsonStr);
+    auto data = responseJson.GetNamedArray(L"data");
+    auto first = data.GetObjectAt(0);
+    auto embedding = first.GetNamedArray(L"embedding");
+    std::vector<double> values;
+    values.reserve(1024);
+    try {
+      for (const auto& v : embedding) values.push_back(v.GetNumber());
+    }
+    catch (const winrt::hresult_error& e) { auto x = e.message(); }
+    co_return winrt::single_threaded_vector(std::move(values));
+  }
+
 }
