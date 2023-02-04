@@ -1,9 +1,16 @@
 namespace OpenAI
 {
+    enum FinishReason
+    {
+      Stop,
+      Length
+    };
+
     [default_interface]
     runtimeclass Choice
     {
       String Text {get; };
+      FinishReason FinishReason{ get; };
     }
 
 }

@@ -91,6 +91,14 @@ namespace winrt::OpenAI::implementation
           auto retChoice = winrt::make<Choice>();
           auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
           retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          auto finish_reason = choice.GetNamedString(L"finish_reason");
+          if (finish_reason == L"stop") {
+            retChoiceImpl->m_finishReason = FinishReason::Stop;
+          } else if (finish_reason == L"length") {
+            retChoiceImpl->m_finishReason = FinishReason::Length;
+          } else {
+            throw winrt::hresult_invalid_argument{};
+          }
           retChoices.push_back(retChoice);
         }
       } else {

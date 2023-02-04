@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "OpenAIClient.g.h"
-#include "Choice.g.h"
+#include "Choice.h"
 #include "CompletionRequest.g.h"
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
@@ -9,11 +9,6 @@
 
 namespace winrt::OpenAI::implementation
 {
-    struct Choice : ChoiceT<Choice>
-    {
-      winrt::hstring Text() const { return m_text; }
-      winrt::hstring m_text;
-    };
 
     struct OpenAIClient : OpenAIClientT<OpenAIClient>
     {

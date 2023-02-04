@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>OpenAI.WinRT</id>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <title>OpenAI.WinRT</title>
     <authors>Alexander Sklar</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -11,7 +11,7 @@
     <projectUrl>http://github.com/asklar/OpenAI.WinRT/</projectUrl>
     <description>WinRT library for calling into OpenAI APIs</description>
     <copyright>©️ Alexander Sklar 2022</copyright>
-    <tags>OpenAI AI ChatGPT GPT WinRT CppWinRT UWP WindowsAppSDK</tags>
+    <tags>OpenAI AI ChatGPT GPT WinRT CppWinRT UWP WindowsAppSDK Azure GPT-3 C++/WinRT</tags>
     <readme>readme.md</readme>
   </metadata>
   <files>
