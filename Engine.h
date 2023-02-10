@@ -96,6 +96,7 @@ namespace winrt::OpenAI::implementation
       for (const auto& s : m_skills) s.Engine(*this);
     }
 
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> ParseApiInputAsync(hstring input, winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Parameter> params);
   private:
     ISkill Search() {return GetSkill(L"search"); }
 

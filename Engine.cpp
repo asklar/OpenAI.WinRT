@@ -177,4 +177,34 @@ The user question: {}
 
 
   }
+
+  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::JsonObject> Engine::ParseApiInputAsync(hstring input, winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Parameter> params)
+  {
+    std::wstring paramsStr = LR"({ "params": {)";
+    constexpr auto Q = L"\"";
+    auto i = 0;
+    for (const auto& p : params) {
+      if (i != 0) paramsStr += L", ";
+      paramsStr += Q + p.Name + Q + L": " + Q + p.Type.Name + Q;
+      i++;
+    }
+    paramsStr += L"}}";
+    auto templateQuery = LR"(You are an AI assisting an API to parse its inputs from a call. 
+The API provides its description in the form of a json with an inputs object that contains pairs of parameter name and expected parameter type.
+For example, given the input string "123, 456, 789" and the API description {{ "inputs": {{ "bloop": "Int32", "flap": "Double", "brak": "String" }} }},
+you would return the json {{ "bloop": 123, "flap": 456.0, "brak": "789" }}
+
+The API description:
+{}
+
+The call: {}
+
+Reply with the inputs in the expected json format and nothing else.
+)";
+    auto query = std::vformat(templateQuery, std::make_wformat_args(paramsStr, input));
+
+    auto completion = co_await Client().ExecuteAsync(query, nullptr);
+    auto json = JsonObject::Parse(completion.Value());
+    co_return json;
+  }
 }

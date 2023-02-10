@@ -54,6 +54,12 @@ namespace OpenAI
     Error
   };
 
+    struct Parameter
+    {
+      String Name;
+      Windows.UI.Xaml.Interop.TypeName Type;
+    };
+
     [default_interface]
     runtimeclass Engine
     {
@@ -72,6 +78,8 @@ namespace OpenAI
         void Log(LogLevel level, String skillName, String message);
         event Windows.Foundation.TypedEventHandler<String, String> EventLogged;
         void ConnectSkills();
+
+        Windows.Foundation.IAsyncOperation<Windows.Data.Json.JsonObject> ParseApiInputAsync(String input, Windows.Foundation.Collections.IVector<Parameter> params);
 
     }
 

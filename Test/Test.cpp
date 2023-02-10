@@ -14,6 +14,7 @@
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.Graphics.Imaging.h>
+#include <winrt/Windows.UI.Xaml.Interop.h>
 #include "../Calculator.h"
 #include <Windows.h>
 using namespace winrt;
@@ -49,43 +50,55 @@ The expression is: {}
   co_return a;
 }
 
+using namespace winrt;
+namespace wfc = winrt::Windows::Foundation::Collections;
+namespace wf = winrt::Windows::Foundation;
+template<typename T> using async = wf::IAsyncOperation<T>;
 
-auto Sort(const winrt::hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine)->winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+async<OpenAI::Answer> Sort(const hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine) {
+
   auto client = engine.GetSkill(L"openai");
+  auto input = co_await engine.ParseApiInputAsync(expression, single_threaded_vector<OpenAI::Parameter>(
+    {
+    OpenAI::Parameter{L"items", xaml_typename<wfc::IVector<hstring>>()}
+    }));
 
-  auto query = std::vformat(LR"(The user has provided a list of items. 
-Reply with the items formatted in a json: {{ "items": [ "...", "...", ...] }} 
-Each item in the array should be enclosed by " (quotes).
-
-The items:
-{}
-)", std::make_wformat_args(expression));
-  auto eng{ engine };
-  auto input = co_await client.ExecuteAsync(query, context);
-  
-  eng.Log(OpenAI::LogLevel::Informational, winrt::hstring{ L"sortAlphabetical" }, input.Value());
+  auto eng = engine;
+  eng.Log(OpenAI::LogLevel::Informational, winrt::hstring{ L"sortAlphabetical" }, input.Stringify());
   JsonObject obj;
   std::vector<std::wstring> items;
-  if (JsonObject::TryParse(input.Value(), obj)) {
-    auto arr = obj.GetNamedArray(L"items");
-    for (const auto& a : arr) items.push_back(a.GetString().c_str());
-  } else {
-    std::wstringstream ss(expression.c_str());
-    std::wstring item;
-    while (std::getline(ss, item, L',')) {
-      items.push_back(item.substr(item.find_first_not_of(L' ')));
-    }
-  }
+  auto arr = input.GetNamedArray(L"items");
+  for (const auto& a : arr) items.push_back(a.GetString().c_str());
+
   std::sort(items.begin(), items.end());
-  std::wstring out = std::accumulate(items.begin(), items.end(), std::wstring{ L"[" }, [](const auto& i, const auto& v) { return i + L",\"" + v  + L"\""; }).erase(1, 1) + L"]";
+  std::wstring out = std::accumulate(items.begin(), items.end(), std::wstring{ L"[" }, 
+    [](const auto& i, const auto& v) { return i + L",\"" + v  + L"\""; }).erase(1, 1) + L"]";
   auto answer = OpenAI::Answer(winrt::hstring{ out.c_str() });
   co_return answer;
+}
 
+WINRT_EXPORT namespace winrt
+{
+  template <typename T>
+  inline Windows::UI::Xaml::Interop::TypeName xaml_typename2()
+  {
+    //static_assert(impl::has_category_v<T>, "T must be WinRT type.");
+    static const Windows::UI::Xaml::Interop::TypeName name{ hstring{ impl::xaml_typename_name<T>::value() }, impl::xaml_typename_kind<T>::value };
+    return name;
+  }
 }
 
 int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
+
+
+
+  auto intType = winrt::xaml_typename2<int32_t>();
+  auto vectorOfInspectableType = winrt::xaml_typename2<winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Foundation::IInspectable>>();
+
+  auto x = 0;
+
 
   auto searchEndpoint = winrt::OpenAI::builders::SearchEndpoint();
 
@@ -171,6 +184,10 @@ ASklarIndieMovie.mp4
     });
   
 
+  auto question =
+    L"get the files from my desktop folder and sort them alphabetically"; // list the text items in the basket"
+    ;
+  //auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"IMG_20210726_164128.jpg").get();
   auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"BlueStacks_ScreenShot.jpg").get();
   auto stream = sf.OpenReadAsync().get();
   auto bmpDecoder = winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream).get();
