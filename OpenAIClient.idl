@@ -18,6 +18,10 @@ namespace OpenAI
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(String prompt, String model);
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(CompletionRequest request);
         
+        Windows.Foundation.Uri EmbeddingUri;
+        Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Double> > GetEmbeddingAsync(String prompt);
+
+
         PromptTemplate CreateTemplate(String prompt);
         FewShotTemplate CreateFewShotTemplate(Windows.Foundation.Collections.IVectorView<String> parameters);
     }

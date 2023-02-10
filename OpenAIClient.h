@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "OpenAIClient.g.h"
-#include "Choice.g.h"
+#include "Choice.h"
 #include "CompletionRequest.g.h"
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
@@ -10,11 +10,6 @@
 
 namespace winrt::OpenAI::implementation
 {
-    struct Choice : ChoiceT<Choice>
-    {
-      winrt::hstring Text() const { return m_text; }
-      winrt::hstring m_text;
-    };
 
     struct GPTSkill : GPTSkillT<GPTSkill> {
       GPTSkill(OpenAI::OpenAIClient c) : m_client(c) {}
@@ -43,11 +38,16 @@ namespace winrt::OpenAI::implementation
         winrt::OpenAI::PromptTemplate CreateTemplate(winrt::hstring promptTemplateString);
         winrt::OpenAI::FewShotTemplate CreateFewShotTemplate(winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> parameters);
 
+        winrt::Windows::Foundation::Uri EmbeddingUri() const noexcept { return m_embeddingUri; }
+        void EmbeddingUri(winrt::Windows::Foundation::Uri v) noexcept { m_embeddingUri = v; }
+        Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<double>> GetEmbeddingAsync(winrt::hstring prompt);
+
         bool UseBearerTokenAuthorization() const noexcept { return m_useBearerTokenAuthorization; }
         void UseBearerTokenAuthorization(bool v) { m_useBearerTokenAuthorization = v; SetAuth(); }
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };
+      winrt::Windows::Foundation::Uri m_embeddingUri{ L"https://api.openai.com/v1/embeddings" };
       winrt::Windows::Web::Http::HttpClient m_client;
       bool m_useBearerTokenAuthorization = true;
       void SetAuth();

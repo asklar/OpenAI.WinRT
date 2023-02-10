@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "OpenAIClient.h"
 #include "OpenAIClient.g.cpp"
-#include "GptSkill.g.cpp"
 #include "CompletionRequest.h"
 #include "PromptTemplate.h"
 #include <winrt/Windows.Web.Http.h>
@@ -92,6 +91,14 @@ namespace winrt::OpenAI::implementation
           auto retChoice = winrt::make<Choice>();
           auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
           retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          auto finish_reason = choice.GetNamedString(L"finish_reason");
+          if (finish_reason == L"stop") {
+            retChoiceImpl->m_finishReason = FinishReason::Stop;
+          } else if (finish_reason == L"length") {
+            retChoiceImpl->m_finishReason = FinishReason::Length;
+          } else {
+            throw winrt::hresult_invalid_argument{};
+          }
           retChoices.push_back(retChoice);
         }
       } else {
@@ -111,7 +118,7 @@ namespace winrt::OpenAI::implementation
             auto choices = json.GetNamedArray(L"choices");
             auto choice = choices.GetObjectAt(0);
             auto text = choice.GetNamedString(L"text");
-            auto index = static_cast<size_t>(choice.GetNamedNumber(L"index"));
+            auto index = choice.GetNamedNumber(L"index");
             if (built.size() <= index) {
               built.reserve(index + 1);
               for (auto i = built.size(); i <= index; i++) {
@@ -298,4 +305,29 @@ namespace winrt::OpenAI::implementation
     auto answer = winrt::OpenAI::Answer(text);
     co_return answer;
   }
+
+  Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<double>> OpenAIClient::GetEmbeddingAsync(winrt::hstring prompt) {
+    auto input = JsonValue::CreateStringValue(prompt);
+    auto request = JsonObject();
+    request.Insert(L"input", input);
+    auto reqStr = request.Stringify();
+    auto content = winrt::HttpStringContent(reqStr, winrt::UnicodeEncoding::Utf8, L"application/json");
+    auto response = co_await m_client.PostAsync(EmbeddingUri(), content);
+    auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
+    auto statusCode = response.StatusCode();
+
+    response.EnsureSuccessStatusCode();
+    auto responseJson = JsonObject::Parse(responseJsonStr);
+    auto data = responseJson.GetNamedArray(L"data");
+    auto first = data.GetObjectAt(0);
+    auto embedding = first.GetNamedArray(L"embedding");
+    std::vector<double> values;
+    values.reserve(1024);
+    try {
+      for (const auto& v : embedding) values.push_back(v.GetNumber());
+    }
+    catch (const winrt::hresult_error& e) { auto x = e.message(); }
+    co_return winrt::single_threaded_vector(std::move(values));
+  }
+
 }
