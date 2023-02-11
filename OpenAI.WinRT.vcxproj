@@ -146,10 +146,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ApiDescription.h">
-      <DependentUpon>ApiDescription.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
     <ClInclude Include="Calculator.h" />
     <ClInclude Include="Choice.h">
       <DependentUpon>Choice.idl</DependentUpon>
@@ -177,10 +173,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ApiDescription.cpp">
-      <DependentUpon>ApiDescription.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
     <ClCompile Include="Choice.cpp">
       <DependentUpon>Choice.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -210,9 +202,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="ApiDescription.idl">
-      <SubType>Designer</SubType>
-    </Midl>
     <Midl Include="Choice.idl">
       <SubType>Designer</SubType>
     </Midl>

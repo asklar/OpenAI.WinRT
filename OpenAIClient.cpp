@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "OpenAIClient.h"
 #include "OpenAIClient.g.cpp"
+#include "GPTSkill.g.cpp"
 #include "CompletionRequest.h"
 #include "PromptTemplate.h"
 #include <winrt/Windows.Web.Http.h>

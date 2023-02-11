@@ -49,6 +49,8 @@ namespace winrt::OpenAI::implementation
     winrt::hstring m_originalQuestion;
     uint32_t m_step{};
     winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> m_basket{ nullptr };
+
+    std::wstring history;
       
   };
   struct Engine : EngineT<Engine>
@@ -103,13 +105,13 @@ namespace winrt::OpenAI::implementation
     ISkill Client() { return GetSkill(L"openai"); }
 
     winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::ISkill> m_skills{ nullptr };
-    //winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> AnswerFromSearchFlowAsync(winrt::hstring question, winrt::hstring original);
-    //winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring question, winrt::hstring original);
-    //winrt::Windows::Foundation::IAsyncOperation<winrt::hstring> GetTitlesFromSearchResultsAsync(winrt::hstring question, winrt::hstring original);
+
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_send;
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::OpenAI::Engine, winrt::OpenAI::EngineStepEventArgs>> m_receive;
     winrt::event<winrt::Windows::Foundation::TypedEventHandler<winrt::hstring, winrt::hstring>> m_eventLogged;
     uint32_t m_maxSteps{ 5 };
+
+    winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ProcessJsonResponseAsync(winrt::Windows::Data::Json::JsonObject completionJson, OpenAI::implementation::Context* context_);
   };
 
     struct EngineStepEventArgs : EngineStepEventArgsT<EngineStepEventArgs>

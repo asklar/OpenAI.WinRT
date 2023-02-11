@@ -66,9 +66,51 @@ namespace winrt::OpenAI::implementation
     return L"application/octet-stream";
   }
 
+  winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::ProcessJsonResponseAsync(JsonObject completionJson, winrt::OpenAI::implementation::Context* context) {
+    winrt::OpenAI::Context context_{ *context };
+    if (completionJson.HasKey(L"answer")) {
+      auto a = winrt::make<Answer>();
+      auto answer = StringFromJson(completionJson, L"answer");
+      a.Value(answer);
+      a.Confidence(completionJson.GetNamedNumber(L"confidence"));
+      if (m_receive) { m_receive(*this, CreateStepArgs(context_, L"OpenAI", a.Value())); }
+      co_return a;
+    }
+    else if (completionJson.HasKey(L"tool")) {
+      auto tool = completionJson.GetNamedString(L"tool");
+      winrt::hstring value{ StringFromJson(completionJson, L"input") };
+
+      //} = completionJson.GetNamedString(L"value");
+      if (m_send) { m_send(*this, CreateStepArgs(context_, tool, value)); }
+      winrt::OpenAI::Answer bestResult{ nullptr };
+
+      if (tool == L"ShowBasket") {
+        std::wstring result;
+        for (const auto& [k, v] : context_.Basket()) {
+          if (result != L"") result += L", ";
+          result += std::vformat(LR"({{ "id": "{}", "type": "{}" }})",
+            std::make_wformat_args(winrt::to_hstring(k), GetMimeType(v)));
+        }
+        result = LR"({ "basket": [)" + result + L"]}\n";
+        bestResult = OpenAI::Answer(result);
+      } else {
+        // try {
+        auto skill = GetSkill(tool);
+        auto v{ value };
+        bestResult = co_await skill.ExecuteAsync(v, context_);
+      }
+      context->history += completionJson.Stringify() + L"\n";
+      context->history += L"TOOL: " + bestResult.Value() + L"\n";
+      //} catch (...){}
+
+      if (m_receive) { m_receive(*this, CreateStepArgs(context_, tool, bestResult.Value())); }
+
+    }
+    context->m_step++;
+
+  }
   winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> Engine::AskAsync(winrt::hstring question, winrt::Windows::Foundation::Collections::IMap<winrt::guid, IInspectable> basket)
   {
-    std::wstring history;
     auto context_ = winrt::make<Context>();
     auto context = winrt::get_self<Context>(context_);
     context->m_basket = basket;
@@ -106,7 +148,6 @@ The content can be obtained by taking a screenshot of the window with the GetWin
 Here are the available tools with examples of possible input to each and what they each return:
 {{ "tools": [
   {}
-  {{ "name": "AnalyzeImage", "inputType": "an id returned by ShowMemory", "description": "returns a json with the description of the image whose ID was passed in as input" }},
   {{ "name": "ShowBasket", "inputType": "{{}}", "description": "returns a json of the contents of the basket, which is a json array that has id and type, user context is stored in the basket  and you can use this tool to access it." }},
   {{ "name": "GetWindow", "inputType": "{{}}", "description": "takes a screenshot of the window and returns its id in the basket" }}
   ] }}
@@ -117,57 +158,40 @@ Do not repeat the user question.
 The user question: {}
 
 {}
+<|endoftext|>
 )" };
+
+    // other skills that could be added:
+    /*
+      {{ "name": "AnalyzeImage", "inputType": "an id returned by ShowMemory", "description": "returns a json with the description of the image whose ID was passed in as input" }},
+
+    */
 
     while (context->m_step < m_maxSteps || m_maxSteps == -1) {
       auto cr = winrt::OpenAI::CompletionRequest{};
-      auto mainQuery = std::vformat(mainQueryTemplate, std::make_wformat_args(skillsJson, question, history));
+      auto mainQuery = std::vformat(mainQueryTemplate, std::make_wformat_args(skillsJson, question, context->history));
       
       auto stepArgs = CreateStepArgs(context_, L"OpenAI", question);
       if (m_send && context->m_step == 0) m_send(*this, stepArgs);
       auto completion = co_await Client().ExecuteAsync(mainQuery, context_);
       
+      auto completionStr = completion.Value();
       JsonObject completionJson;
-      if (JsonObject::TryParse(completion.Value(), completionJson)) {
-        if (completionJson.HasKey(L"answer")) {
-          auto a = winrt::make<Answer>();
-          auto answer = StringFromJson(completionJson, L"answer");
-          a.Value(answer);
-          a.Confidence(completionJson.GetNamedNumber(L"confidence"));
-          if (m_receive) { m_receive(*this, CreateStepArgs(context_, L"OpenAI", a.Value())); }
-          co_return a;
-          break;
-        } else if (completionJson.HasKey(L"tool")) {
-          auto tool = completionJson.GetNamedString(L"tool");
-          winrt::hstring value{ StringFromJson(completionJson, L"input") };
-
-          //} = completionJson.GetNamedString(L"value");
-          if (m_send) { m_send(*this, CreateStepArgs(context_, tool, value)); }
-          winrt::OpenAI::Answer bestResult{ nullptr };
-
-          if (tool == L"ShowBasket") {
-            std::wstring result;
-            for (const auto& [k, v] : context->Basket()) {
-              if (result != L"") result += L", ";
-              result += std::vformat(LR"({{ "id": "{}", "type": "{}" }})",
-                std::make_wformat_args(winrt::to_hstring(k), GetMimeType(v)));
-            }
-            result = LR"({ "basket": [)" + result + L"]}\n";
-            bestResult = OpenAI::Answer(result);
-          } else {
-            // try {
-            auto skill = GetSkill(tool);
-            auto v{ value };
-            bestResult = co_await skill.ExecuteAsync(v, context_);
-          }
-            history += completion.Value() + L"\n";
-            history += L"TOOL: " +bestResult.Value() + L"\n";
-          //} catch (...){}
-
-            if (m_receive) { m_receive(*this, CreateStepArgs(context_, tool, bestResult.Value())); }
-
+      if (!JsonObject::TryParse(completionStr, completionJson)) {
+        std::wstring firstLine{ completionStr };
+        auto newline = firstLine.find('\n');
+        if (newline != std::wstring::npos) {
+          firstLine = firstLine.substr(0, newline);
         }
-        context->m_step++;
+        completionStr = firstLine;
+        JsonObject::TryParse(completionStr, completionJson);
+      }
+
+      if (completionJson.Size() != 0) {
+        auto answer = co_await ProcessJsonResponseAsync(completionJson, context);
+        if (answer != nullptr) {
+          co_return answer;
+        }
       } else {
         auto lastResponse = completion.Value();
         Log(OpenAI::LogLevel::Error, L"Engine", L"invalid response from GPT: " + lastResponse);

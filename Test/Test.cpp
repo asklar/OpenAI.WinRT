@@ -88,25 +88,11 @@ WINRT_EXPORT namespace winrt
   }
 }
 
-int main()
-{
-  winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
+winrt::OpenAI::SearchEndpoint searchEndpoint{ nullptr };
+winrt::OpenAI::OpenAIClient openaiEndpoint{ nullptr };
 
 
-
-  auto intType = winrt::xaml_typename2<int32_t>();
-  auto vectorOfInspectableType = winrt::xaml_typename2<winrt::Windows::Foundation::Collections::IVector<winrt::Windows::Foundation::IInspectable>>();
-
-  auto x = 0;
-
-
-  auto searchEndpoint = winrt::OpenAI::builders::SearchEndpoint();
-
-  auto openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
-    .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
-    .UseBearerTokenAuthorization(false)
-    ;
-
+void DoSkillConnect() {
   auto calculator = winrt::OpenAI::Skill(L"calculator", OpenAI::SkillHandlerAsync{ &CalculatorAsync });
 
   auto sort = winrt::OpenAI::Skill(L"sortListAlphabetical", { &Sort });
@@ -115,99 +101,103 @@ int main()
     auto client = engine.GetSkill(L"openai");
     std::wstring exp{ expression };
     auto intent = co_await client.ExecuteAsync(std::vformat(LR"(You are an assistant helping the user with their files on Windows. 
+    Respond with a well-formed json that contains the folder and the set of files to fetch. Use * for wildcards.
+    For example: {{ "folder": "documents", "filespec": "*" }} to fetch all files from the documents folder.
+    or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
+    Here are the files the user wants: {}
 
-Respond with a well-formed json that contains the folder and the set of files to fetch. Use * for wildcards.
-For example: {{ "folder": "documents", "filespec": "*" }} to fetch all files from the documents folder.
-or {{ "folder": "pictures", "filespec": "*.png" }} to fetch all png files.
-
-Here are the files the user wants: {}
-
-)", std::make_wformat_args(exp)), context);
+    )", std::make_wformat_args(exp)), context);
     auto text = intent.Value();
     JsonObject json;
     if (JsonObject::TryParse(text, json)) {
       std::wcout << "[files] " << text << "\n";
       co_return OpenAI::Answer(LR"(hammerthrow.txt
-taylorSwiftTopHits.docx
-AgneHammerThrowRecord.md
-OpenAIMonetizationPlan.pptx
-ASklarIndieMovie.mp4
-)");
+    taylorSwiftTopHits.docx
+    AgneHammerThrowRecord.md
+    OpenAIMonetizationPlan.pptx
+    ASklarIndieMovie.mp4
+    )");
     } else {
       co_return OpenAI::Answer(LR"({ "error": "input was not a valid json")");
     }
   });
 
-
-  
   auto SetForegroundColor = [](uint32_t r) {
     return std::vformat(L"\033[38;2;{};{};{}m", std::make_wformat_args(GetRValue(r), GetGValue(r), GetBValue(r)));
-  }; 
-  
+  };
+
   std::wcout << SetForegroundColor(RGB(0xf3, 0x4f, 0x1c)) << L"\xdb";// \x2588";
   std::wcout << SetForegroundColor(RGB(0x7F, 0xBC, 0x00)) << L"\xdb";
-  std::wcout << L"\033[0m"; 
+  std::wcout << L"\033[0m";
   std::wcout << " Microsoft AI\n";
 
-  std::wcout << SetForegroundColor(RGB(0xFF,0xBA, 0x01)) << L"\xdb";
+  std::wcout << SetForegroundColor(RGB(0xFF, 0xBA, 0x01)) << L"\xdb";
   std::wcout << SetForegroundColor(RGB(0x01, 0xA6, 0xF0)) << L"\xdb";
-  std::wcout << L"\033[0m"; 
+  std::wcout << L"\033[0m";
   std::wcout << L" " << std::wstring(12, (wchar_t)196) << L"\n\n";
 
-  std::wcout << SetForegroundColor(RGB(0x28,0x68,0xff)) << L"\033[1m";
+  std::wcout << SetForegroundColor(RGB(0x28, 0x68, 0xff)) << L"\033[1m";
   std::wcout << "What can I do for you? ";
   std::wcout << L"\033[0m";
-  
+
   std::wstring question;
   std::getline(std::wcin, question);
 
 
   auto engine = winrt::OpenAI::builders::Engine{}
-    .Skills({ 
+    .Skills({
       OpenAI::SearchSkill(searchEndpoint),
       OpenAI::GPTSkill(openaiEndpoint),
-      calculator, 
-      files, 
+      calculator,
+      files,
       sort,
-  });
+      winrt::OpenAI::Skill(L"GetTextFromBasketId", [](winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) -> winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> {
+        auto input = co_await engine.ParseApiInputAsync(expression, single_threaded_vector<OpenAI::Parameter>(
+    {
+    OpenAI::Parameter{L"id", xaml_typename<winrt::guid>()}
+    }));
+  auto guid = winrt::guid{ input.GetNamedString(L"id") };
+        auto value = context.Basket().Lookup(guid);
+        auto str = winrt::unbox_value<winrt::hstring>(value);
+        co_return OpenAI::Answer(str);
+        })
+      });
   engine.ConnectSkills();
 
   // For debugging purposes:
   engine.EngineStepSend([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
-        std::wcout << L"Step " << args.Context().Step() << L" --> [" << args.EndpointName() << L"] " << args.Value() << L"\n";
-      });
+    std::wcout << L"Step " << args.Context().Step() << L" --> [" << args.EndpointName() << L"] " << args.Value() << L"\n";
+    });
   engine.EngineStepReceive([](const auto& engine, const winrt::OpenAI::EngineStepEventArgs& args) {
     std::wcout << L"Step " << args.Context().Step() << L" <-- [" << args.EndpointName() << L"] " << args.Value() << L"\n";
     });
   engine.EventLogged([](winrt::hstring skill, winrt::hstring msg) {
     std::wcout << L"[" << skill << "]: " << msg << L"\n";
     });
-  
 
-  auto question =
-    L"get the files from my desktop folder and sort them alphabetically"; // list the text items in the basket"
-    ;
-  //auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"IMG_20210726_164128.jpg").get();
-  auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"BlueStacks_ScreenShot.jpg").get();
+
+
+  auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"IMG_20210726_164128.jpg").get();
+  //auto sf = winrt::Windows::Storage::KnownFolders::PicturesLibrary().GetFileAsync(L"BlueStacks_ScreenShot.jpg").get();
   auto stream = sf.OpenReadAsync().get();
   auto bmpDecoder = winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream).get();
   auto bmp = bmpDecoder.GetSoftwareBitmapAsync().get();
-    //L"get the files on my desktop folder and sort them alphabetically";
-  
-  auto answer = engine.AskAsync({ question }, 
+  //L"get the files on my desktop folder and sort them alphabetically";
+
+  auto answer = engine.AskAsync({ question },
     winrt::single_threaded_map<winrt::guid, winrt::Windows::Foundation::IInspectable>(
       std::unordered_map<winrt::guid, winrt::Windows::Foundation::IInspectable>
-      {
-        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
-        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), winrt::box_value(L"this is a test") },
-        { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
-      }
-      )).get();
+  {
+    { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+    { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), winrt::box_value(L"this is a test") },
+    { winrt::Windows::Foundation::GuidHelper::CreateNewGuid(), bmp },
+  }
+  )).get();
 
   //std::wcout << "Q: " << question << L"\n";
   std::wcout << SetForegroundColor(RGB(0x28, 0x68, 0xff)) << L"\033[1m";
   std::wcout << "Here you go:\n\t";
-  std::wcout << L"\033[0m"; 
+  std::wcout << L"\033[0m";
   std::wcout << answer.Value() << L"\n";
   std::wcout << "Confidence: " << answer.Confidence() << L"\n";
 
@@ -220,15 +210,17 @@ auto answer = engine.AskAsync({ question }).get();
 
 */
 
+}
 
-  return 0;
+void DoSimpleCompletion() {
+  auto completionTask = openaiEndpoint.GetCompletionAsync(L"git clone ", L"text-davinci-003");
+  auto completions = completionTask.get();
+  for (auto const& c : completions) {
+    std::wcout << c.Text() << L"\n";
+  }
+}
 
-  //auto completionTask = openai.GetCompletionAsync(L"git clone ", L"text-davinci-003");
-  //auto completions = completionTask.get();
-  //for (auto const& c : completions) {
-  //  std::wcout << c.Text() << L"\n";
-  //}
-  //std::wcout << L"\n\n---\n";
+void DoCompletionRequestWithStreaming() {
   auto completionTask2 = openaiEndpoint.GetCompletionAsync(
     winrt::OpenAI::builders::CompletionRequest{}
     .Prompt(L"git clone ")
@@ -236,9 +228,9 @@ auto answer = engine.AskAsync({ question }).get();
     .NCompletions(5)
     .Temperature(0.7f)
     .MaxTokens(100)
-//    .Stream(true)
+    .Stream(true)
   );
-  
+
   auto completions2 = completionTask2.get();
   auto i = 0;
   for (auto const& c : completions2) {
@@ -247,23 +239,24 @@ auto answer = engine.AskAsync({ question }).get();
     std::wcout << (uint32_t)c.FinishReason() << L"\n";
     i++;
   }
+}
 
-  using namespace winrt::Windows::Foundation::Collections;
-  using namespace winrt;
-
-
+  
+void DoPromptTemplate() {
   auto promptTemplate = openaiEndpoint.CreateTemplate(L"Tell me a {adjective} joke about {content}");
   auto funnyJokeTask = promptTemplate.FormatAsync({ {L"adjective", L"funny"}, {L"content", L"chickens"} });
   auto funnyJoke = funnyJokeTask.get();
 
   std::wcout << L"\n\n" << funnyJoke << L"\n\n\n";
+}
 
+void DoFewShotTemplate() {
   auto example = openaiEndpoint.CreateFewShotTemplate({ L"word", L"antonym" });
 
-  auto examples = std::vector {
+  auto examples = std::vector{
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring> { {L"word", L"happy"}, { L"antonym", L"sad" }}),
     winrt::multi_threaded_map(std::unordered_map<hstring, hstring>{ {L"word", L"tall"}, { L"antonym", L"short" }}),
-    };
+  };
   example.Examples(std::move(examples));
 
 
@@ -280,4 +273,38 @@ auto answer = engine.AskAsync({ question }).get();
   fewshot = example.ExecuteAsync(word).get();
   std::wcout << L"the opposite of " << word << L" is " << fewshot.Lookup(L"antonym").begin() << L" and the length is " << fewshot.Lookup(L"length").begin() << L"\n";
 
+}
+
+void DoBingSearch() {
+  auto search = OpenAI::SearchSkill(searchEndpoint);
+  auto engine = winrt::OpenAI::builders::Engine{}
+    .Skills({
+      search,
+      OpenAI::GPTSkill(openaiEndpoint)
+      });
+  engine.ConnectSkills();
+  std::wstring question;
+  std::wcout << "Bing web search x GPT -- Results inference\n\n";
+  do {
+    std::wcout << "?> ";
+    std::getline(std::wcin, question);
+    if (question == L"quit") break;
+    auto result = search.ExecuteAsync(question, nullptr).get();
+    std::wcout << std::vformat(LR"({{ "value": "{}", "confidence": {} }})", std::make_wformat_args(result.Value(), result.Confidence())) << L"\n";
+  } while (true);
+}
+
+int main()
+{
+  winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
+
+  searchEndpoint = winrt::OpenAI::builders::SearchEndpoint();
+
+  openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
+    .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
+    .UseBearerTokenAuthorization(false)
+    ;
+
+  DoBingSearch();
+  //DoSkillConnect();
 }
