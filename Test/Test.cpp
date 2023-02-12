@@ -1,6 +1,6 @@
 ﻿// Test.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
+#define NOMINMAX
 #include <iostream>
 #include <winrt/base.h>
 #include <winrt/Windows.Foundation.h>
@@ -17,9 +17,21 @@
 #include <winrt/Windows.UI.Xaml.Interop.h>
 #include "../Calculator.h"
 #include <Windows.h>
+
+#include <winrt/Windows.Web.Http.h>
+#include <winrt/Windows.Data.Html.h>
+#include "Test.h"
+
 using namespace winrt;
 using namespace Windows::Data::Json;
+namespace wfc = winrt::Windows::Foundation::Collections;
+namespace wf = winrt::Windows::Foundation;
+template<typename T> using async = wf::IAsyncOperation<T>;
 
+winrt::OpenAI::SearchEndpoint searchEndpoint{ nullptr };
+winrt::OpenAI::OpenAIClient openaiEndpoint{ nullptr };
+
+#if 0
 winrt::Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> CalculatorAsync(winrt::hstring expression, OpenAI::Context context, OpenAI::Engine engine) {
   auto a = OpenAI::Answer{};
 
@@ -50,10 +62,6 @@ The expression is: {}
   co_return a;
 }
 
-using namespace winrt;
-namespace wfc = winrt::Windows::Foundation::Collections;
-namespace wf = winrt::Windows::Foundation;
-template<typename T> using async = wf::IAsyncOperation<T>;
 
 async<OpenAI::Answer> Sort(const hstring& expression, const OpenAI::Context& context, const OpenAI::Engine& engine) {
 
@@ -88,8 +96,6 @@ WINRT_EXPORT namespace winrt
   }
 }
 
-winrt::OpenAI::SearchEndpoint searchEndpoint{ nullptr };
-winrt::OpenAI::OpenAIClient openaiEndpoint{ nullptr };
 
 
 void DoSkillConnect() {
@@ -275,6 +281,9 @@ void DoFewShotTemplate() {
 
 }
 
+#endif
+#undef GetObject
+
 void DoBingSearch() {
   auto search = OpenAI::SearchSkill(searchEndpoint);
   auto engine = winrt::OpenAI::builders::Engine{}
@@ -294,6 +303,216 @@ void DoBingSearch() {
   } while (true);
 }
 
+async<winrt::hstring> Fetch(wf::Uri url) {
+  auto client = winrt::Windows::Web::Http::HttpClient{};
+  auto response = co_await client.GetAsync(url);
+  response.EnsureSuccessStatusCode();
+  auto content = response.Content();
+  auto str = co_await content.ReadAsStringAsync();
+  co_return str;
+}
+
+
+
+std::wstring extractParagraphs(std::wstring_view html) {
+
+  std::wstring output;
+  std::wstring f_output;
+  /*
+  Using the position of each char on the string I created a for loop
+  that loops to every char on the string. If a <p> is found everything
+  is stored into the output. If a "</p>" is found the inner loop is broken
+
+   */
+
+  for (int i = 0; i < html.size(); i++) {
+    if ((html[i] == L'<') && (html[i + 1] == L'p') && (html[i + 2] == L'>')) {
+      for (int j = i; j < html.size(); j++) {
+        output += html[j + 3];
+        if ((html[j] == L'<') && (html[j + 1] == L'/') && (html[j + 2] == L'p')
+          && (html[j + 3] == L'>')) {
+          i = j + 4;
+          output += L"\n\n";
+          break;
+        }
+      }
+    }
+  }
+  /* for larger html files my function will sometimes will include some "</p>",
+  I created this extra forloop to get rid of them"
+  */
+  for (int i = 0; i < output.size(); i++) {
+    if ((output[i] == L'<') && (output[i + 1] == L'/') && (output[i + 2] == L'p')
+      && (output[i + 3] == L'>'))i += 4;
+
+    f_output += output[i];
+  }
+
+  return f_output;
+}
+
+std::wstring removeTags(std::wstring htmltext) {
+
+  std::wstring output;
+  int flag = 0;
+  /*
+  Using the position of each char on the string array
+  to check if its on the HTML tag range.
+  if the char is not one of the tags, it is added to
+  the output
+  */
+  for (int i = 0; i < htmltext.size(); i++) {
+    if (htmltext[i] == L'>')
+      flag = 0;
+    if (htmltext[i] == '<')
+      flag = 1;
+    if (htmltext[i] != L'>' && !flag)
+      output += htmltext[i];
+  }
+
+  return output;
+}
+
+std::wstring GetTextFromHtml(winrt::hstring html) {
+  auto r = removeTags(extractParagraphs(html));
+  return r;
+}
+
+void SkipWhitespace(std::wstring_view& contentStr)
+{
+  std::wstring_view whitespace{ L" \r\n\t" };
+  while (contentStr.length() > 0 && whitespace.find_first_of(contentStr[0]) != std::wstring_view::npos) {
+    auto firstNotSpace = contentStr.find_first_not_of(whitespace);
+    contentStr = &contentStr[firstNotSpace];
+  }
+}
+
+async<winrt::hstring> SummarizeTextByChunks(std::wstring_view text, const int& Chunk_Size_Bytes, const winrt::OpenAI::ISkill gpt, const winrt::OpenAI::Context& context)
+{
+  std::wstring summary;
+  std::wstring_view contentStr = text;
+  int i = 0;
+  while (i < contentStr.size()) {
+    const std::wstring_view start{ &contentStr[i] };
+
+    auto target = i + std::min(Chunk_Size_Bytes, (int)start.length());
+    std::wstring_view chunk;
+
+    if (target > contentStr.size()) {
+      chunk = std::wstring_view(&contentStr[i]);
+      i = contentStr.size() + 1;
+    } else {
+      auto before_newline = contentStr.find_last_of('\n', target);
+      auto before_period = contentStr.find_last_of('.', target);
+      auto after_newline = start.find_first_of('\n', Chunk_Size_Bytes);
+      auto after_period = start.find_first_of('.', Chunk_Size_Bytes);
+      auto before_newline_count = target - before_newline;
+      auto before_period_count = target - before_period;
+      auto after_newline_count = after_newline - target;
+      auto after_period_count = after_period - target;
+      if (before_newline_count < before_period_count && before_newline > i) {
+        chunk = std::wstring_view(&contentStr[i], before_newline - i + 1);
+        i = before_newline + 1;
+      } else if (before_period_count <= before_newline_count && before_period > i) {
+        chunk = std::wstring_view(&contentStr[i], before_period - i + 1);
+        i = before_period + 1;
+      } else {
+        chunk = std::wstring_view(&contentStr[i], Chunk_Size_Bytes);
+        i += Chunk_Size_Bytes;
+      }
+    }
+
+    auto summaryCompletion = co_await gpt.ExecuteAsync(L"Summarize this text in less than 2 sentences:\n" + chunk + L"\n", context);
+    auto summaryText = summaryCompletion.Value();
+    summary += summaryText;
+  }
+  co_return winrt::hstring{ summary };
+}
+
+
+async<OpenAI::Answer> WikipediaSearch(hstring expression, OpenAI::Context context, OpenAI::Engine engine) {
+  auto searchJson = co_await searchEndpoint.SearchAsync(L"site:wikipedia.org " + expression);
+  auto websites = searchJson.GetNamedObject(L"webPages");
+  auto value = websites.GetNamedArray(L"value");
+  winrt::hstring content;
+  winrt::Windows::Foundation::Uri url{ nullptr };
+  auto s = websites.Stringify();
+  JsonArray sites;
+  for (const auto& v_ : value) {
+    auto v = v_.GetObject();
+    auto urlStr = v.GetNamedString(L"url");
+    auto nameStr = v.GetNamedString(L"name");
+    auto snippetStr = v.GetNamedString(L"snippet");
+    JsonObject site;
+    site.Insert(L"name", JsonValue::CreateStringValue(nameStr));
+    site.Insert(L"snippet", JsonValue::CreateStringValue(snippetStr));
+    site.Insert(L"url", JsonValue::CreateStringValue(urlStr));
+    sites.Append(site);
+  }
+  auto gpt = engine.GetSkill(L"openai");
+  auto prompt = std::vformat(LR"(The following is a list of web results for the query "{}"\n\n{}\n\nReturn the url that corresponds to the most relevant entry\n\n)",
+    std::make_wformat_args(expression, sites.Stringify()));
+  auto bestLinkCompletion = co_await gpt.ExecuteAsync(prompt, context);
+  auto urlStr = bestLinkCompletion.Value();
+
+    try {
+      url = wf::Uri{ urlStr };
+      std::wstring host{ url.Host() };
+      if (host.ends_with(L"wikipedia.org")) {
+        content = co_await Fetch(url);
+      }
+    } catch (...){}
+  
+  if (content != L"") {
+    auto text = GetTextFromHtml(content);
+    std::wstring_view contentStr{ text };
+    SkipWhitespace(contentStr);
+    std::wstring_view loggedOutMessage{ L"Pages for logged out editors learn more" };
+    if (contentStr.starts_with(loggedOutMessage)) {
+      contentStr = contentStr.substr(loggedOutMessage.length());
+    }
+    SkipWhitespace(contentStr);
+
+    
+    constexpr auto Chunk_Size_Bytes = 1024;
+    winrt::hstring summarizedChunks{ contentStr };
+    while (summarizedChunks.size() > Chunk_Size_Bytes) {
+      summarizedChunks = co_await SummarizeTextByChunks(summarizedChunks, Chunk_Size_Bytes, gpt, context);
+    }
+    
+    auto overallCompletion = co_await gpt.ExecuteAsync(L"Summarize this text:\n" + summarizedChunks, context);
+    auto summary = overallCompletion.Value();
+    std::wstring_view alpha{ summary };
+    auto first = alpha.find_first_not_of(L" \r\n\t");
+    
+    summary = alpha.substr(first);
+    auto answer = OpenAI::Answer(summary);
+    answer.Source(url);
+    co_return answer;
+  }
+  co_return OpenAI::Answer(L"null");
+}
+
+void DoWikipedia() {
+  auto search = OpenAI::Skill{ L"WikipediaResearch", & WikipediaSearch};
+  auto engine = winrt::OpenAI::builders::Engine{}
+    .Skills({
+      search,
+      OpenAI::GPTSkill(openaiEndpoint)
+      });
+  engine.ConnectSkills();
+  std::wstring question;
+  std::wcout << "Wikipedia research x GPT -- Results inference\n\n";
+  do {
+    std::wcout << "?> ";
+    std::getline(std::wcin, question);
+    if (question == L"quit") break;
+    auto result = search.ExecuteAsync(question, nullptr).get();
+    std::wcout << std::vformat(LR"({{ "value": "{}", "confidence": {}, "source": "{}" }})", std::make_wformat_args(result.Value(), result.Confidence(), result.Source().AbsoluteUri())) << L"\n";
+  } while (true);
+}
+
+
 int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
@@ -305,6 +524,9 @@ int main()
     .UseBearerTokenAuthorization(false)
     ;
 
-  DoBingSearch();
+  DoWikipedia();
+  //DoBingSearch();
+  
+
   //DoSkillConnect();
 }

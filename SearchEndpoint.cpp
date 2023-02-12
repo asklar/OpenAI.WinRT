@@ -35,7 +35,17 @@ the results from the search query:
 
 the question: {}
 
-provide your best guess for a possible answer in json form: {{ "answer": "...", "confidence": 0.... }} where the value of confidence is 1 if you are confident in the answer and 0 if not. If you cannot accurately determine the answer, return 0 for the confidence.)", std::make_wformat_args(titles, question));
+provide your best guess for a possible answer in json form: {{ "answer": "...", "confidence": 0.... }} where the value of confidence is 1 if you are confident in the answer and 0 if not. If you cannot accurately determine the answer, return 0 for the confidence.
+Example:
+  search query results: ["a", "b", "c"]
+  question: "largest number"
+  -> {{ "answer": null, "confidence": 0 }}
+
+Example:
+  search query results: ["a", "b", "c"]
+  question: "first letter"
+  -> {{ "answer": "a", "confidence": 1 }}
+)", std::make_wformat_args(titles, question));
 
     
     auto result = co_await client.ExecuteAsync(query, context);

@@ -17,10 +17,13 @@ namespace winrt::OpenAI::implementation
     void Value(winrt::hstring const& value) { m_value = value; }
     double Confidence() const noexcept { return m_confidence; }
     void Confidence(double value) { m_confidence = value; }
+    winrt::Windows::Foundation::Uri Source() const noexcept { return m_source; }
+    void Source(winrt::Windows::Foundation::Uri const& value) { m_source = value; }
 
   private:
     winrt::hstring m_value;
-    double m_confidence;
+    double m_confidence{ 1 };
+    winrt::Windows::Foundation::Uri m_source{ nullptr };
   };
 
   struct Skill : SkillT<Skill>

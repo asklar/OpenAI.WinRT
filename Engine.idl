@@ -9,6 +9,7 @@ namespace OpenAI
     Answer(String strValue);
     String Value;
     Double Confidence;
+    Windows.Foundation.Uri Source;
   }
 
 
