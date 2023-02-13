@@ -44,7 +44,7 @@ jobs:
     - name: NuGet pack
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        nuget pack
+        nuget pack -p Configuration=${{env.BUILD_CONFIGURATION}}
         
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.1
