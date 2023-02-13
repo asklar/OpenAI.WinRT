@@ -54,8 +54,3 @@ jobs:
         # A file, directory or wildcard pattern that describes what to upload
         path: OpenAI.WinRT.*.nupkg
         if-no-files-found: error
-
-    - name: NuGet push
-      run: |
-        nuget push *.nupkg -ApiKey ${{env.NUGET_APIKEY}} -Source https://api.nuget.org/v3/index.json -SkipDuplicate
-        
