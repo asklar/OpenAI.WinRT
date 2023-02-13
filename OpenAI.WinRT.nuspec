@@ -16,10 +16,12 @@
   </metadata>
   <files>
     <file src="nuget/OpenAI.WinRT.targets" target="build/native" />
-    <file src="x64\Release\OpenAI.WinRT\OpenAI.winmd" target="lib/uap10.0" />
-    <file src="x64\Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-x64/native" />
-    <file src="Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-x86/native" />
-    <file src="arm64\Release\OpenAI.WinRT\OpenAI.dll" target="runtimes/win10-arm64/native" />
+    <file src="_build\AnyCPU\$Configuration$\OpenAI.Projection\bin\OpenAI.Projection.dll" target="lib\net6.0-windows10.0.17763.0" />
+    <file src="_build\AnyCPU\$Configuration$\OpenAI.Projection\bin\OpenAI.Projection.dll" target="lib\net6.0-windows10.0.18362.0" />
+    <file src="_build\x64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.winmd" target="lib/uap10.0" />
+    <file src="_build\x64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-x64/native" />
+    <file src="_build\Win32\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-x86/native" />
+    <file src="_build\arm64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-arm64/native" />
     <file src="readme.md" />
     <file src="LICENSE" />
   </files>
