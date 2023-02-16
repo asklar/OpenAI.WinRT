@@ -16,12 +16,15 @@ int main()
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
   auto openai = winrt::OpenAI::builders::OpenAIClient{}
     ;
-
+  
 
   auto emTask = openai.GetEmbeddingAsync(L"the quick brown fox");
   auto emVector = emTask.get();
-  std::array<double, 1024> embedding;
+  std::array<double, 1024> embedding, other{1, 0};
   emVector.GetMany(0, winrt::array_view(embedding));
+  auto zero = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance({ embedding.begin(), embedding.end() }, { embedding.begin(), embedding.end() }, winrt::OpenAI::Similarity::L2);
+  auto d = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance({ embedding.begin(), embedding.end() }, { other.begin(), other.end() });
+
   //auto completionTask = openai.GetCompletionAsync(L"git clone ", L"text-davinci-003");
   //auto completions = completionTask.get();
   //for (auto const& c : completions) {

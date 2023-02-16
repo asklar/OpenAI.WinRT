@@ -5,6 +5,7 @@
 #include "CompletionRequest.g.h"
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
+#include "EmbeddingUtils.g.h"
 #include <winrt/Windows.Web.Http.h>
 
 namespace winrt::OpenAI::implementation
@@ -38,11 +39,20 @@ namespace winrt::OpenAI::implementation
       bool m_useBearerTokenAuthorization = true;
       void SetAuth();
     };
+
+
+    struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils>
+    {
+      EmbeddingUtils() = default;
+
+      static double EmbeddingDistance(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2, winrt::OpenAI::Similarity const& similarity);
+      static double EmbeddingDistance(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2);
+    };
+
 }
 
 namespace winrt::OpenAI::factory_implementation
 {
-    struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>
-    {
-    };
+    struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>{};
+    struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils, implementation::EmbeddingUtils>{};
 }
