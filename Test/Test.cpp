@@ -20,7 +20,6 @@
 
 #include <winrt/Windows.Web.Http.h>
 #include <winrt/Windows.Data.Html.h>
-#include "Test.h"
 
 using namespace winrt;
 using namespace Windows::Data::Json;
