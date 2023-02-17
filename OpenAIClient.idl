@@ -1,7 +1,6 @@
 import "Choice.idl";
 import "CompletionRequest.idl";
 import "PromptTemplate.idl";
-import "Engine.idl";
 
 namespace OpenAI
 {
@@ -40,9 +39,4 @@ namespace OpenAI
       static Double EmbeddingDistance(Windows.Foundation.Collections.IVectorView<Double> v1, Windows.Foundation.Collections.IVectorView<Double> v2);
     }
 
-    [default_interface]
-    runtimeclass GPTSkill : ISkill
-    {
-      GPTSkill(OpenAIClient Endpoint);
-    } 
 }

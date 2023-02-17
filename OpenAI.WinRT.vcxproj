@@ -146,17 +146,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Calculator.h" />
     <ClInclude Include="Choice.h">
       <DependentUpon>Choice.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="CompletionRequest.h">
       <DependentUpon>CompletionRequest.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
-    <ClInclude Include="Engine.h">
-      <DependentUpon>Engine.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="pch.h" />
@@ -167,10 +162,6 @@
       <DependentUpon>PromptTemplate.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
-    <ClInclude Include="SearchEndpoint.h">
-      <DependentUpon>SearchEndpoint.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Choice.cpp">
@@ -179,10 +170,6 @@
     </ClCompile>
     <ClCompile Include="CompletionRequest.cpp">
       <DependentUpon>CompletionRequest.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
-    <ClCompile Include="Engine.cpp">
-      <DependentUpon>Engine.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="pch.cpp">
@@ -196,10 +183,6 @@
       <DependentUpon>PromptTemplate.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-    <ClCompile Include="SearchEndpoint.cpp">
-      <DependentUpon>SearchEndpoint.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Choice.idl">
@@ -208,14 +191,8 @@
     <Midl Include="CompletionRequest.idl">
       <SubType>Designer</SubType>
     </Midl>
-    <Midl Include="Engine.idl">
-      <SubType>Designer</SubType>
-    </Midl>
     <Midl Include="OpenAIClient.idl" />
     <Midl Include="PromptTemplate.idl">
-      <SubType>Designer</SubType>
-    </Midl>
-    <Midl Include="SearchEndpoint.idl">
       <SubType>Designer</SubType>
     </Midl>
   </ItemGroup>

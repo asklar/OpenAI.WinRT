@@ -6,23 +6,11 @@
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
 #include "EmbeddingUtils.g.h"
-#include "GPTSkill.g.h"
+
 #include <winrt/Windows.Web.Http.h>
 
 namespace winrt::OpenAI::implementation
 {
-
-    struct GPTSkill : GPTSkillT<GPTSkill> {
-      GPTSkill(OpenAI::OpenAIClient c) : m_client(c) {}
-      winrt::hstring Name() const noexcept { return L"openai"; }
-      OpenAI::Engine Engine() const noexcept { return m_engine; }
-      void Engine(OpenAI::Engine e) { m_engine = e; }
-      Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> ExecuteAsync(winrt::hstring query, OpenAI::Context context);
-
-    private:
-      OpenAI::Engine m_engine{ nullptr };
-      OpenAI::OpenAIClient m_client{ nullptr };
-    };
     struct OpenAIClient : OpenAIClientT<OpenAIClient>
     {
         OpenAIClient();
@@ -68,6 +56,5 @@ namespace winrt::OpenAI::implementation
 namespace winrt::OpenAI::factory_implementation
 {
     struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>{};
-    struct GPTSkill : GPTSkillT<GPTSkill, implementation::GPTSkill> {};
     struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils, implementation::EmbeddingUtils> {};
 }

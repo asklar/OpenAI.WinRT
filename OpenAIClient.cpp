@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "OpenAIClient.h"
 #include "OpenAIClient.g.cpp"
-#include "GPTSkill.g.cpp"
 #include "CompletionRequest.h"
 #include "PromptTemplate.h"
 #include "EmbeddingUtils.g.cpp"
@@ -120,7 +119,7 @@ namespace winrt::OpenAI::implementation
             auto choices = json.GetNamedArray(L"choices");
             auto choice = choices.GetObjectAt(0);
             auto text = choice.GetNamedString(L"text");
-            auto index = choice.GetNamedNumber(L"index");
+            auto index = static_cast<uint64_t>(choice.GetNamedNumber(L"index"));
             if (built.size() <= index) {
               built.reserve(index + 1);
               for (auto i = built.size(); i <= index; i++) {
@@ -141,8 +140,7 @@ namespace winrt::OpenAI::implementation
       }
     }
 #ifdef _DEBUG      
-    catch (std::exception& e) {
-      auto x = e.what();
+    catch (std::exception& /*e*/) {
       throw;
     }
     catch (winrt::hresult_error& e) {
@@ -296,18 +294,6 @@ namespace winrt::OpenAI::implementation
 
   }
 
-  Windows::Foundation::IAsyncOperation<winrt::OpenAI::Answer> GPTSkill::ExecuteAsync(winrt::hstring query, OpenAI::Context context)
-  {
-    auto cr = winrt::OpenAI::CompletionRequest{};
-    cr.MaxTokens(2000);
-    cr.NCompletions(1);
-    cr.Prompt(query);
-    auto response = co_await m_client.GetCompletionAsync(cr);
-    auto text = response.GetAt(0).Text();
-    auto answer = winrt::OpenAI::Answer(text);
-    co_return answer;
-  }
-
   Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<double>> OpenAIClient::GetEmbeddingAsync(winrt::hstring prompt) {
     auto input = JsonValue::CreateStringValue(prompt);
     auto request = JsonObject();
@@ -316,8 +302,7 @@ namespace winrt::OpenAI::implementation
     auto content = winrt::HttpStringContent(reqStr, winrt::UnicodeEncoding::Utf8, L"application/json");
     auto response = co_await m_client.PostAsync(EmbeddingUri(), content);
     auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
-    auto statusCode = response.StatusCode();
-
+    
     response.EnsureSuccessStatusCode();
     auto responseJson = JsonObject::Parse(responseJsonStr);
     auto data = responseJson.GetNamedArray(L"data");
