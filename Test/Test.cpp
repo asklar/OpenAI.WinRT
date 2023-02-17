@@ -98,10 +98,7 @@ int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
 
-  openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
-    .CompletionUri(winrt::Windows::Foundation::Uri{ L"https://lrsopenai.openai.azure.com/openai/deployments/Text-Davinci3-Deployment/completions?api-version=2022-12-01" })
-    .UseBearerTokenAuthorization(false)
-    ;
+  openaiEndpoint = winrt::OpenAI::builders::OpenAIClient();
 
   DoSimpleCompletion();
 
