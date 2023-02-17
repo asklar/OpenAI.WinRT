@@ -26,6 +26,19 @@ namespace OpenAI
         FewShotTemplate CreateFewShotTemplate(Windows.Foundation.Collections.IVectorView<String> parameters);
     }
 
+    enum Similarity
+    {
+      Cosine,
+      L1,
+      L2,
+      Linf
+    };
+    [default_interface]
+    runtimeclass EmbeddingUtils
+    {
+      static Double EmbeddingDistance(Windows.Foundation.Collections.IVectorView<Double> v1, Windows.Foundation.Collections.IVectorView<Double> v2, Similarity similarity);
+      static Double EmbeddingDistance(Windows.Foundation.Collections.IVectorView<Double> v1, Windows.Foundation.Collections.IVectorView<Double> v2);
+    }
 
     [default_interface]
     runtimeclass GPTSkill : ISkill

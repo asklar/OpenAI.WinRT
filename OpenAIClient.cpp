@@ -4,6 +4,7 @@
 #include "GPTSkill.g.cpp"
 #include "CompletionRequest.h"
 #include "PromptTemplate.h"
+#include "EmbeddingUtils.g.cpp"
 #include <winrt/Windows.Web.Http.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 #include <winrt/Windows.Data.Json.h>
@@ -329,6 +330,60 @@ namespace winrt::OpenAI::implementation
     }
     catch (const winrt::hresult_error& e) { auto x = e.message(); }
     co_return winrt::single_threaded_vector(std::move(values));
+  }
+
+
+  struct L1Similarity {
+    static double ElementDistance(double x, double y, double accumulatedDistance) { return accumulatedDistance + std::abs(x - y); }
+    static double VectorDistance(double accumulatedDistance, double norm1, double norm2) { return accumulatedDistance / (norm1 * norm2); }
+    using norm_t = L1Similarity;
+  };
+  struct L2Similarity {
+    static double ElementDistance(double x, double y, double accumulatedDistance) { return accumulatedDistance + std::pow(x - y, 2); }
+    static double VectorDistance(double accumulatedDistance, double norm1, double norm2) { return std::sqrt(accumulatedDistance / (norm1 * norm2)); }
+    using norm_t = L2Similarity;
+  };
+  struct LinfSimilarity {
+    static double ElementDistance(double x, double y, double accumulatedDistance) { return (std::max)(accumulatedDistance, std::abs(x-y)); }
+    static double VectorDistance(double accumulatedDistance, double norm1, double norm2) { return accumulatedDistance / (norm1 * norm2); }
+    using norm_t = LinfSimilarity;
+  };
+  struct CosineSimilarity {
+    static double ElementDistance(double x, double y, double accumulatedDistance) { return accumulatedDistance + x * y; }
+    static double VectorDistance(double accumulatedDistance, double norm1, double norm2) { return accumulatedDistance / std::sqrt(norm1 * norm2); }
+    using norm_t = L2Similarity;
+  };
+  template<typename T>
+  double EmbeddingDistanceImpl(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2)
+  {
+    double distance = 0;
+    double norm1 = 0, norm2 = 0;
+    for (uint32_t i = 0; i < v1.Size(); i++) {
+      distance = T::ElementDistance(v1.GetAt(i), v2.GetAt(i), distance);
+      norm1 = T::norm_t::ElementDistance(v1.GetAt(i), 0, norm1);
+      norm2 = T::norm_t::ElementDistance(v2.GetAt(i), 0, norm2);
+    }
+    return T::VectorDistance(distance, norm1, norm2);
+  }
+
+  double EmbeddingUtils::EmbeddingDistance(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2, winrt::OpenAI::Similarity const& similarity)
+  {
+    if (v1.Size() != v2.Size()) throw winrt::hresult_invalid_argument{};
+    switch (similarity) {
+    case Similarity::Cosine:
+      return EmbeddingDistanceImpl<CosineSimilarity>(v1, v2);
+    case Similarity::L1:
+      return EmbeddingDistanceImpl<L1Similarity>(v1, v2);
+    case Similarity::L2:
+      return EmbeddingDistanceImpl<L2Similarity>(v1, v2);
+    case Similarity::Linf:
+      return EmbeddingDistanceImpl<LinfSimilarity>(v1, v2);
+    }
+    throw winrt::hresult_invalid_argument{};
+  }
+  double EmbeddingUtils::EmbeddingDistance(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2)
+  {
+    return EmbeddingDistance(v1, v2, Similarity::Cosine);
   }
 
 }
