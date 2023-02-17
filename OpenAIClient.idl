@@ -4,6 +4,7 @@ import "PromptTemplate.idl";
 
 namespace OpenAI
 {
+
     [default_interface]
     runtimeclass OpenAIClient
     {
@@ -12,8 +13,7 @@ namespace OpenAI
         Windows.Foundation.Uri CompletionUri;
 
         Boolean UseBearerTokenAuthorization;
-        
-        
+    
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(String prompt, String model);
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetCompletionAsync(CompletionRequest request);
         
@@ -38,4 +38,5 @@ namespace OpenAI
       static Double EmbeddingDistance(Windows.Foundation.Collections.IVectorView<Double> v1, Windows.Foundation.Collections.IVectorView<Double> v2, Similarity similarity);
       static Double EmbeddingDistance(Windows.Foundation.Collections.IVectorView<Double> v1, Windows.Foundation.Collections.IVectorView<Double> v2);
     }
+
 }

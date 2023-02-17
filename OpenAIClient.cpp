@@ -119,7 +119,7 @@ namespace winrt::OpenAI::implementation
             auto choices = json.GetNamedArray(L"choices");
             auto choice = choices.GetObjectAt(0);
             auto text = choice.GetNamedString(L"text");
-            auto index = choice.GetNamedNumber(L"index");
+            auto index = static_cast<uint64_t>(choice.GetNamedNumber(L"index"));
             if (built.size() <= index) {
               built.reserve(index + 1);
               for (auto i = built.size(); i <= index; i++) {
@@ -140,8 +140,7 @@ namespace winrt::OpenAI::implementation
       }
     }
 #ifdef _DEBUG      
-    catch (std::exception& e) {
-      auto x = e.what();
+    catch (std::exception& /*e*/) {
       throw;
     }
     catch (winrt::hresult_error& e) {
@@ -303,8 +302,7 @@ namespace winrt::OpenAI::implementation
     auto content = winrt::HttpStringContent(reqStr, winrt::UnicodeEncoding::Utf8, L"application/json");
     auto response = co_await m_client.PostAsync(EmbeddingUri(), content);
     auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
-    auto statusCode = response.StatusCode();
-
+    
     response.EnsureSuccessStatusCode();
     auto responseJson = JsonObject::Parse(responseJsonStr);
     auto data = responseJson.GetNamedArray(L"data");

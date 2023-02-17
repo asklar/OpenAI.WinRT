@@ -6,17 +6,19 @@
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
 #include "EmbeddingUtils.g.h"
+
 #include <winrt/Windows.Web.Http.h>
 
 namespace winrt::OpenAI::implementation
 {
-
     struct OpenAIClient : OpenAIClientT<OpenAIClient>
     {
         OpenAIClient();
         winrt::hstring ApiKey() const noexcept { return m_apiKey; }
         void ApiKey(winrt::hstring v) noexcept;
         
+        
+
         winrt::Windows::Foundation::Uri CompletionUri() const noexcept { return m_completionUri; }
         void CompletionUri(winrt::Windows::Foundation::Uri v) noexcept { m_completionUri = v; }
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::hstring prompt, winrt::hstring model);
@@ -54,5 +56,5 @@ namespace winrt::OpenAI::implementation
 namespace winrt::OpenAI::factory_implementation
 {
     struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>{};
-    struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils, implementation::EmbeddingUtils>{};
+    struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils, implementation::EmbeddingUtils> {};
 }
