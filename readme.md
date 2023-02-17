@@ -6,7 +6,7 @@ WinRT library for interacting with OpenAI APIs
 
 -	Create an OpenAIClient and configure it
   - To use OpenAI, specify the ApiKey, or it will use the OPENAI_KEY environment variable.
-  - To use Azure OpenAI, you’ll need to specify the CompletionEndpoint, the ApiKey (or use the OPENAI_KEY env var), and set UseBearerTokenAuthorization(false)
+  - To use Azure OpenAI, you'll need to specify the CompletionEndpoint, the ApiKey (or use the OPENAI_KEY env var), and set UseBearerTokenAuthorization(false)
 -	Once you have the client object, you can call the GetCompletionAsync API to get completions from it given a prompt. The result is an array of objects that have a Text member you can get the completion text from.
 
 ```cpp
