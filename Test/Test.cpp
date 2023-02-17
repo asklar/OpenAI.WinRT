@@ -89,8 +89,8 @@ void DoEmbedding() {
   auto emVector = emTask.get();
   std::array<double, 1024> embedding, other{ 1, 0 };
   emVector.GetMany(0, winrt::array_view(embedding));
-  auto zero = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance({ embedding.begin(), embedding.end() }, { embedding.begin(), embedding.end() }, winrt::OpenAI::Similarity::L2);
-  auto d = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance({ embedding.begin(), embedding.end() }, { other.begin(), other.end() });
+  auto zero = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance(emVector.GetView(), emVector.GetView(), winrt::OpenAI::Similarity::L2);
+  auto d = winrt::OpenAI::EmbeddingUtils::EmbeddingDistance(emVector.GetView(), { other.begin(), other.end() });
 
 }
 

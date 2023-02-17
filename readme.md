@@ -128,3 +128,25 @@ If you'd rather not use the CppWinRT.Builders NuGet package, you can set propert
   auto fewshot = example.ExecuteAsync(L"big").get();
   std::wcout << L"the opposite of big is " << fewshot.Lookup(L"antonym").begin() << L"\n";
 ```
+
+### GetEmbeddingAsync
+
+Given a string, returns a vector of doubles representing the embedding of the string.
+
+```cpp
+  auto embedding = openai.GetEmbeddingAsync(L"hello world").get();
+  for (auto const& e : embedding) {
+    std::wcout << e << L", ";
+  }
+```
+
+### EmbeddingDistance
+
+Given two embeddings, returns a double representing the distance between them.
+
+```cpp
+  auto embedding1 = openai.GetEmbeddingAsync(L"hello world").get();
+  auto embedding2 = openai.GetEmbeddingAsync(L"goodbye world").get();
+  auto distance = openai.EmbeddingDistance(embedding1.GetView(), embedding2.GetView());
+  std::wcout << L"distance between hello world and goodbye world is " << distance << L"\n";
+```
