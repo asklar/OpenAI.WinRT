@@ -4,10 +4,10 @@ WinRT library for interacting with OpenAI APIs
 
 ## Sample usage
 
--	Create an OpenAIClient and configure it
-  - To use OpenAI, specify the ApiKey, or it will use the OPENAI_KEY environment variable.
-  - To use Azure OpenAI, you'll need to specify the CompletionEndpoint, the ApiKey (or use the OPENAI_KEY env var), and set UseBearerTokenAuthorization(false)
--	Once you have the client object, you can call the GetCompletionAsync API to get completions from it given a prompt. The result is an array of objects that have a Text member you can get the completion text from.
+-	Create an `OpenAIClient` and configure it
+  - To use OpenAI, specify the `ApiKey`, or it will use the `OPENAI_KEY` environment variable.
+  - To use Azure OpenAI, you'll need to specify the `CompletionEndpoint`, the `ApiKey` (or use the OPENAI_KEY env var), and set `UseBearerTokenAuthorization(false)`
+-	Once you have the client object, you can call the [GetCompletionAsync](#getcompletionasync) API to get completions from it given a prompt. The result is an array of objects that have a Text member you can get the completion text from.
 
 ```cpp
 #include <winrt/openai.h>
@@ -91,7 +91,7 @@ int main()
   }
 ```
 
-If you'd rather not use the CppWinRT.Builders NuGet package, you can set properties individually on a CompletionRequest object:
+If you'd rather not use the [CppWinRT.Builders](https://www.nuget.org/packages/cppwinrt.builders) NuGet package, you can set properties individually on a `CompletionRequest` object:
 ```cpp
   auto cr = winrt::OpenAI::CompletionRequest{};
   cr.Prompt(L"git clone ");
