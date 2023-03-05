@@ -120,7 +120,7 @@ int main()
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
 
   openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
-    .ApiKey(L"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");
+;
 
   DoGpt35TurboCompletion();
 
