@@ -4,6 +4,8 @@
 #include "CompletionRequest.h"
 #include "PromptTemplate.h"
 #include "EmbeddingUtils.g.cpp"
+#include "ChatMessage.g.cpp"
+
 #include <winrt/Windows.Web.Http.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 #include <winrt/Windows.Data.Json.h>
@@ -61,9 +63,28 @@ namespace winrt::OpenAI::implementation
 #endif
     {
       auto promptString = EscapeStringForJson(request.Prompt());
+      std::wstring requestJson;
       auto modelString = EscapeStringForJson(request.Model());
+      const std::wstring_view model{ modelString };
+      const auto isGpt35Turbo = request.Model() == L"gpt-3.5-turbo";
+      if (isGpt35Turbo) {
+        constexpr std::wstring_view requestTemplate{ LR"({{
+  "model": {},
+  "messages": [{{ "role": "user", "content": {} }}],
+  "temperature": {},
+  "max_tokens": {},
+  "n": {},
+  "top_p": {},
+  "stream": {}
+}})" };
+        const std::wstring_view prompt{ promptString };
+        requestJson = std::vformat(requestTemplate, std::make_wformat_args(
+          model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
+          request.Stream() ? L"true" : L"false"
+        ));
 
-      constexpr std::wstring_view requestTemplate{ LR"({{
+      } else {
+        constexpr std::wstring_view requestTemplate{ LR"({{
   "model": {},
   "prompt": {},
   "temperature": {},
@@ -72,14 +93,15 @@ namespace winrt::OpenAI::implementation
   "top_p": {},
   "stream": {}
 }})" };
-      const std::wstring_view model{ modelString };
-      const std::wstring_view prompt{ promptString };
-      auto requestJson = std::vformat(requestTemplate, std::make_wformat_args(
-        model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
-        request.Stream() ? L"true" : L"false"
+        const std::wstring_view prompt{ promptString };
+        requestJson = std::vformat(requestTemplate, std::make_wformat_args(
+          model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
+          request.Stream() ? L"true" : L"false"
         ));
+      }
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
-      auto response = co_await m_client.PostAsync(CompletionUri(), content);
+      auto uri = isGpt35Turbo ? Windows::Foundation::Uri{ gpt35turboEndpoint } : CompletionUri();
+      auto response = co_await m_client.PostAsync(uri, content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       statusCode = response.StatusCode();
 
@@ -91,7 +113,12 @@ namespace winrt::OpenAI::implementation
           const auto& choice = c.GetObject();
           auto retChoice = winrt::make<Choice>();
           auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
-          retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          if (!isGpt35Turbo) {
+            retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          } else {
+            auto msg = choice.GetNamedObject(L"message");
+            retChoiceImpl->m_text = msg.GetNamedString(L"content");
+          }
           auto finish_reason = choice.GetNamedString(L"finish_reason");
           if (finish_reason == L"stop") {
             retChoiceImpl->m_finishReason = FinishReason::Stop;
@@ -118,7 +145,13 @@ namespace winrt::OpenAI::implementation
             auto json = JsonObject::Parse(jsonStr);
             auto choices = json.GetNamedArray(L"choices");
             auto choice = choices.GetObjectAt(0);
-            auto text = choice.GetNamedString(L"text");
+            winrt::hstring text;
+            if (!isGpt35Turbo) {
+              text = choice.GetNamedString(L"text");
+            } else {
+              auto msg = choice.GetNamedObject(L"message");
+              text = msg.GetNamedString(L"content");
+            }
             auto index = static_cast<uint64_t>(choice.GetNamedNumber(L"index"));
             if (built.size() <= index) {
               built.reserve(index + 1);
@@ -369,6 +402,129 @@ namespace winrt::OpenAI::implementation
   double EmbeddingUtils::EmbeddingDistance(winrt::Windows::Foundation::Collections::IVectorView<double> const& v1, winrt::Windows::Foundation::Collections::IVectorView<double> const& v2)
   {
     return EmbeddingDistance(v1, v2, Similarity::Cosine);
+  }
+
+  Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetChatResponseAsync(winrt::OpenAI::ChatRequest request)
+  {
+    const bool isGpt35Turbo = request.Model().starts_with(L"gpt-3.5-turbo");
+    if (!isGpt35Turbo) throw winrt::hresult_invalid_argument();
+
+    std::vector<winrt::OpenAI::Choice> retChoices;
+    HttpStatusCode statusCode{};
+
+    {
+      std::wstring requestJson;
+      auto modelString = EscapeStringForJson(request.Model());
+      const std::wstring_view model{ modelString };
+      JsonArray messagesJson;
+      for (const auto& m : request.Messages()) {
+        auto message = JsonObject{};
+        std::wstring_view role;
+        switch (m.Role()) {
+        case ChatRole::System:
+          role = L"system"; break;
+        case ChatRole::User:
+          role = L"user"; break;
+        case ChatRole::Assistant:
+          role = L"assistant"; break;
+        }
+        message.Insert(L"role", JsonValue::CreateStringValue(role));
+        message.Insert(L"content", JsonValue::CreateStringValue(m.Content()));
+        messagesJson.Append(message);
+      }
+
+      auto messages = messagesJson.Stringify();
+        constexpr std::wstring_view requestTemplate{ LR"({{
+  "model": {},
+  "messages": {}, 
+  "temperature": {},
+  "max_tokens": {},
+  "n": {},
+  "top_p": {},
+  "stream": {}
+}})" };
+
+        auto maxTokens = request.MaxTokens() == std::numeric_limits<uint32_t>::infinity() ?
+          LR"(null)" : std::to_wstring(request.MaxTokens());
+        requestJson = std::vformat(requestTemplate, std::make_wformat_args(
+          model, messagesJson.Stringify(), request.Temperature(), maxTokens, request.NCompletions(), request.TopP(),
+          request.Stream() ? L"true" : L"false"
+        ));
+
+      auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
+      auto uri = Windows::Foundation::Uri{ gpt35turboEndpoint };
+      auto response = co_await m_client.PostAsync(uri, content);
+      auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
+      statusCode = response.StatusCode();
+
+      response.EnsureSuccessStatusCode();
+      if (!request.Stream()) {
+        auto responseJson = JsonObject::Parse(responseJsonStr);
+        auto choices = responseJson.GetNamedArray(L"choices");
+        for (const auto& c : choices) {
+          const auto& choice = c.GetObject();
+          auto retChoice = winrt::make<Choice>();
+          auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
+          if (!isGpt35Turbo) {
+            retChoiceImpl->m_text = choice.GetNamedString(L"text");
+          } else {
+            auto msg = choice.GetNamedObject(L"message");
+            retChoiceImpl->m_text = msg.GetNamedString(L"content");
+          }
+          auto finish_reason = choice.GetNamedString(L"finish_reason");
+          if (finish_reason == L"stop") {
+            retChoiceImpl->m_finishReason = FinishReason::Stop;
+          } else if (finish_reason == L"length") {
+            retChoiceImpl->m_finishReason = FinishReason::Length;
+          } else {
+            throw winrt::hresult_invalid_argument{};
+          }
+          retChoices.push_back(retChoice);
+        }
+      } else {
+        auto ptr = responseJsonStr.begin();
+        std::vector<std::wstring> built;
+        while (ptr < responseJsonStr.end() && ptr != nullptr) {
+          constexpr wchar_t dataStr[] = L"data: ";
+          constexpr wchar_t doneStr[] = L"[DONE]";
+          if (wcsncmp(ptr, dataStr, std::size(dataStr) - 1) == 0) {
+            ptr += std::size(dataStr) - 1;
+            auto jsonStr = ptr;
+            ptr = wcschr(jsonStr, L'\n') + 1; // double \n
+            const_cast<wchar_t*>(ptr)[0] = L'\0';
+            ptr++;
+            if (wcsncmp(jsonStr, doneStr, std::size(doneStr) - 1) == 0) break;
+            auto json = JsonObject::Parse(jsonStr);
+            auto choices = json.GetNamedArray(L"choices");
+            auto choice = choices.GetObjectAt(0);
+            winrt::hstring text;
+            auto delta = choice.GetNamedObject(L"delta");
+            if (delta.HasKey(L"content")) {
+              text = delta.GetNamedString(L"content");
+            }
+            auto index = static_cast<uint64_t>(choice.GetNamedNumber(L"index"));
+            if (built.size() <= index) {
+              built.reserve(index + 1);
+              for (auto i = built.size(); i <= index; i++) {
+                built.push_back({});
+              }
+            }
+            built[index] += text;
+          } else {
+            throw winrt::hresult_out_of_bounds();
+          }
+        }
+        for (const auto& c : built) {
+          auto retChoice = winrt::make<Choice>();
+          auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
+          retChoiceImpl->m_text = c;
+          retChoices.push_back(retChoice);
+        }
+      }
+    }
+    auto ret = winrt::single_threaded_vector<winrt::OpenAI::Choice>(std::move(retChoices));
+    co_return ret;
+
   }
 
 }
