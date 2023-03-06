@@ -3,10 +3,9 @@
 #include <winrt/base.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
-#include <winrt/openai.h>
+
 #include <winrt/builders/OpenAI.h>
 #include <winrt/builders/helpers.h>
-
 
 #undef GetObject
 
@@ -23,6 +22,28 @@ void DoSimpleCompletion() {
   auto completionTask = openaiEndpoint.GetCompletionAsync(L"git clone ", L"text-davinci-003");
   auto completions = completionTask.get();
   for (auto const& c : completions) {
+    std::wcout << c.Text() << L"\n";
+  }
+}
+
+void DoGpt35TurboCompletion() {
+  auto completionTask = openaiEndpoint.GetCompletionAsync(L"git clone ", L"gpt-3.5-turbo");
+  auto completions = completionTask.get();
+  for (auto const& c : completions) {
+    std::wcout << c.Text() << L"\n";
+  }
+}
+
+void DoChat() {
+  auto chatTask = openaiEndpoint.GetChatResponseAsync(
+    winrt::OpenAI::builders::ChatRequest{}
+    .Stream(true)
+    .Messages({
+      winrt::OpenAI::ChatMessage(winrt::OpenAI::ChatRole::System, L"Reply in spanish"),
+      winrt::OpenAI::ChatMessage(winrt::OpenAI::ChatRole::User, L"What is the meaning of the golden ratio?"),
+      }
+  )).get();
+  for (const auto& c : chatTask) {
     std::wcout << c.Text() << L"\n";
   }
 }
@@ -98,9 +119,14 @@ int main()
 {
   winrt::init_apartment(/*winrt::apartment_type::multi_threaded*/);
 
-  openaiEndpoint = winrt::OpenAI::builders::OpenAIClient();
+  openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
+;
 
-  DoSimpleCompletion();
+  DoGpt35TurboCompletion();
 
-  DoEmbedding();
+  DoChat();
+
+//  DoSimpleCompletion();
+
+//  DoEmbedding();
 }

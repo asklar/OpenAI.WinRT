@@ -6,6 +6,7 @@
 #include "PromptTemplate.g.h"
 #include "FewShotTemplate.g.h"
 #include "EmbeddingUtils.g.h"
+#include "ChatMessage.g.h"
 
 #include <winrt/Windows.Web.Http.h>
 
@@ -17,13 +18,16 @@ namespace winrt::OpenAI::implementation
         winrt::hstring ApiKey() const noexcept { return m_apiKey; }
         void ApiKey(winrt::hstring v) noexcept;
         
-        
+
+        static constexpr std::wstring_view gpt35turboEndpoint = L"https://api.openai.com/v1/chat/completions";
 
         winrt::Windows::Foundation::Uri CompletionUri() const noexcept { return m_completionUri; }
         void CompletionUri(winrt::Windows::Foundation::Uri v) noexcept { m_completionUri = v; }
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::hstring prompt, winrt::hstring model);
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::OpenAI::CompletionRequest request);
 
+        Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetChatResponseAsync(winrt::OpenAI::ChatRequest request);
+        
         winrt::OpenAI::PromptTemplate CreateTemplate(winrt::hstring promptTemplateString);
         winrt::OpenAI::FewShotTemplate CreateFewShotTemplate(winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> parameters);
 
@@ -33,6 +37,9 @@ namespace winrt::OpenAI::implementation
 
         bool UseBearerTokenAuthorization() const noexcept { return m_useBearerTokenAuthorization; }
         void UseBearerTokenAuthorization(bool v) { m_useBearerTokenAuthorization = v; SetAuth(); }
+
+
+        
     private:
       winrt::hstring m_apiKey;
       winrt::Windows::Foundation::Uri m_completionUri{ L"https://api.openai.com/v1/completions" };
@@ -42,6 +49,13 @@ namespace winrt::OpenAI::implementation
       void SetAuth();
     };
 
+    struct ChatMessage : ChatMessageT<ChatMessage>
+    {
+      Property<winrt::OpenAI::ChatRole> Role;
+      Property<winrt::hstring> Content;
+      
+      ChatMessage(winrt::OpenAI::ChatRole role, winrt::hstring content) : Role(role), Content(content) {}
+    };
 
     struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils>
     {
@@ -57,4 +71,5 @@ namespace winrt::OpenAI::factory_implementation
 {
     struct OpenAIClient : OpenAIClientT<OpenAIClient, implementation::OpenAIClient>{};
     struct EmbeddingUtils : EmbeddingUtilsT<EmbeddingUtils, implementation::EmbeddingUtils> {};
+    struct ChatMessage : ChatMessageT<ChatMessage, implementation::ChatMessage> {};
 }
