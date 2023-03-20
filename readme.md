@@ -1,6 +1,6 @@
 # OpenAI.WinRT
 
-WinRT library for interacting with OpenAI APIs
+WinRT library for interacting with OpenAI APIs3
 
 ## Sample usage
 
