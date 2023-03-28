@@ -407,7 +407,6 @@ namespace winrt::OpenAI::implementation
   Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> OpenAIClient::GetChatResponseAsync(winrt::OpenAI::ChatRequest request)
   {
     const bool isGpt35Turbo = request.Model().starts_with(L"gpt-3.5-turbo");
-    if (!isGpt35Turbo) throw winrt::hresult_invalid_argument();
 
     std::vector<winrt::OpenAI::Choice> retChoices;
     HttpStatusCode statusCode{};
@@ -417,6 +416,8 @@ namespace winrt::OpenAI::implementation
       auto modelString = EscapeStringForJson(request.Model());
       const std::wstring_view model{ modelString };
       JsonArray messagesJson;
+      std::wstring messagesString = L"\"";
+
       for (const auto& m : request.Messages()) {
         auto message = JsonObject{};
         std::wstring_view role;
@@ -431,10 +432,14 @@ namespace winrt::OpenAI::implementation
         message.Insert(L"role", JsonValue::CreateStringValue(role));
         message.Insert(L"content", JsonValue::CreateStringValue(m.Content()));
         messagesJson.Append(message);
+        messagesString += L" <|im_start|>" + role + L" " + m.Content() + L" <|im_end|>";
       }
 
       auto messages = messagesJson.Stringify();
-        constexpr std::wstring_view requestTemplate{ LR"({{
+      messagesString += L" <|im_start|>assistant \"";
+
+      if (isGpt35Turbo) {
+          constexpr std::wstring_view requestTemplate{ LR"({{
   "model": {},
   "messages": {}, 
   "temperature": {},
@@ -444,15 +449,34 @@ namespace winrt::OpenAI::implementation
   "stream": {}
 }})" };
 
-        auto maxTokens = request.MaxTokens() == std::numeric_limits<uint32_t>::infinity() ?
-          LR"(null)" : std::to_wstring(request.MaxTokens());
-        requestJson = std::vformat(requestTemplate, std::make_wformat_args(
-          model, messagesJson.Stringify(), request.Temperature(), maxTokens, request.NCompletions(), request.TopP(),
-          request.Stream() ? L"true" : L"false"
-        ));
+          auto maxTokens = request.MaxTokens() == std::numeric_limits<uint32_t>::infinity() ?
+              LR"(null)" : std::to_wstring(request.MaxTokens());
+          requestJson = std::vformat(requestTemplate, std::make_wformat_args(
+              model, messagesJson.Stringify(), request.Temperature(), maxTokens, request.NCompletions(), request.TopP(),
+              request.Stream() ? L"true" : L"false"
+          ));
+      }
+      else {
+          constexpr std::wstring_view requestTemplate{ LR"({{
+                "model": {},
+                "prompt": {},
+                "temperature": {},
+                "max_tokens": {},
+                "n": {},
+                "top_p": {},
+                "stream": {}
+            }})" };
+          const std::wstring_view prompt{ messagesString };
+          auto maxTokens = request.MaxTokens() == std::numeric_limits<uint32_t>::infinity() ?
+              LR"(null)" : std::to_wstring(request.MaxTokens());
+          requestJson = std::vformat(requestTemplate, std::make_wformat_args(
+              model, prompt, request.Temperature(), maxTokens, request.NCompletions(), request.TopP(),
+              request.Stream() ? L"true" : L"false"
+          ));
+      }
 
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
-      auto uri = Windows::Foundation::Uri{ gpt35turboEndpoint };
+      auto uri = isGpt35Turbo ? Windows::Foundation::Uri{ gpt35turboEndpoint } : CompletionUri();
       auto response = co_await m_client.PostAsync(uri, content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       statusCode = response.StatusCode();

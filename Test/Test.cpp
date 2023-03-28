@@ -48,6 +48,22 @@ void DoChat() {
   }
 }
 
+void DoSimpleChat() {
+    auto chatTask = openaiEndpoint.GetChatResponseAsync(
+        winrt::OpenAI::builders::ChatRequest{}
+        .Stream(false)
+        .Model(L"text-davinci-003")
+        .MaxTokens(150)
+        .Messages({
+          winrt::OpenAI::ChatMessage(winrt::OpenAI::ChatRole::System, L"Reply in spanish"),
+          winrt::OpenAI::ChatMessage(winrt::OpenAI::ChatRole::User, L"What is the meaning of the golden ratio?"),
+            }
+    )).get();
+    for (const auto& c : chatTask) {
+        std::wcout << c.Text() << L"\n";
+    }
+}
+
 void DoCompletionRequestWithStreaming() {
   auto completionTask2 = openaiEndpoint.GetCompletionAsync(
     winrt::OpenAI::builders::CompletionRequest{}
@@ -122,9 +138,11 @@ int main()
   openaiEndpoint = winrt::OpenAI::builders::OpenAIClient()
 ;
 
-  DoGpt35TurboCompletion();
+//  DoGpt35TurboCompletion();
 
-  DoChat();
+    DoSimpleChat();
+
+//  DoChat();
 
 //  DoSimpleCompletion();
 
