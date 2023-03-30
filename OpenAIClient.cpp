@@ -452,7 +452,7 @@ namespace winrt::OpenAI::implementation
         ));
 
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
-      auto uri = Windows::Foundation::Uri{ gpt35turboEndpoint };
+      auto uri = m_useBearerTokenAuthorization ? Windows::Foundation::Uri{ gpt35turboEndpoint } : CompletionUri();
       auto response = co_await m_client.PostAsync(uri, content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       statusCode = response.StatusCode();
