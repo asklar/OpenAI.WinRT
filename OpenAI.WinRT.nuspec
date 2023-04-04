@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>OpenAI.WinRT</id>
-    <version>0.0.10</version>
+    <version>0.0.11</version>
     <title>OpenAI.WinRT</title>
     <authors>Alexander Sklar</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
