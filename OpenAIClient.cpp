@@ -68,8 +68,7 @@ namespace winrt::OpenAI::implementation
       const std::wstring_view model{ modelString };
       const auto isGpt35Turbo = request.Model() == L"gpt-3.5-turbo";
       if (isGpt35Turbo) {
-        constexpr std::wstring_view requestTemplate{ LR"({{
-  "model": {},
+        constexpr std::wstring_view requestTemplate{ LR"({{ {}
   "messages": [{{ "role": "user", "content": {} }}],
   "temperature": {},
   "max_tokens": {},
@@ -78,8 +77,10 @@ namespace winrt::OpenAI::implementation
   "stream": {}
 }})" };
         const std::wstring_view prompt{ promptString };
+        auto modelJson = UseBearerTokenAuthorization() ? std::vformat(LR"("model" : {},
+)", std::make_wformat_args(model)) : L"";
         requestJson = std::vformat(requestTemplate, std::make_wformat_args(
-          model, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
+          modelJson, prompt, request.Temperature(), request.MaxTokens(), request.NCompletions(), request.TopP(),
           request.Stream() ? L"true" : L"false"
         ));
 
@@ -100,7 +101,7 @@ namespace winrt::OpenAI::implementation
         ));
       }
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
-      auto uri = isGpt35Turbo ? Windows::Foundation::Uri{ gpt35turboEndpoint } : CompletionUri();
+      auto uri = isGpt35Turbo && UseBearerTokenAuthorization() ? Windows::Foundation::Uri{gpt35turboEndpoint} : CompletionUri();
       auto response = co_await m_client.PostAsync(uri, content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       statusCode = response.StatusCode();
