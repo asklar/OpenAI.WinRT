@@ -477,13 +477,18 @@ namespace winrt::OpenAI::implementation
             auto msg = choice.GetNamedObject(L"message");
             retChoiceImpl->m_text = msg.GetNamedString(L"content");
           }
-          auto finish_reason = choice.GetNamedString(L"finish_reason");
-          if (finish_reason == L"stop") {
-            retChoiceImpl->m_finishReason = FinishReason::Stop;
-          } else if (finish_reason == L"length") {
-            retChoiceImpl->m_finishReason = FinishReason::Length;
-          } else {
-            throw winrt::hresult_invalid_argument{};
+          if (choice.HasKey(L"finish_reason")) {
+            auto fr = choice.GetNamedValue(L"finish_reason");
+            auto finish_reason = fr.ValueType() == JsonValueType::String ? fr.GetString() : L"stop";
+            if (finish_reason == L"stop") {
+              retChoiceImpl->m_finishReason = FinishReason::Stop;
+            }
+            else if (finish_reason == L"length") {
+              retChoiceImpl->m_finishReason = FinishReason::Length;
+            }
+            else {
+              throw winrt::hresult_invalid_argument{};
+            }
           }
           retChoices.push_back(retChoice);
         }
