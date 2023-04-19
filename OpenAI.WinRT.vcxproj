@@ -152,7 +152,6 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <CETCompat Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">true</CETCompat>
-      <CETCompat Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">true</CETCompat>
       <CETCompat Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</CETCompat>
       <CETCompat Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</CETCompat>
     </Link>
