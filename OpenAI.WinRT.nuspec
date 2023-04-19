@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>OpenAI.WinRT</id>
-    <version>0.0.13</version>
+    <version>0.0.15</version>
     <title>OpenAI.WinRT</title>
     <authors>Alexander Sklar</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -22,6 +22,9 @@
     <file src="_build\x64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-x64/native" />
     <file src="_build\Win32\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-x86/native" />
     <file src="_build\arm64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.dll" target="runtimes/win10-arm64/native" />
+    <file src="_build\x64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.pdb" target="runtimes/win10-x64/native" />
+    <file src="_build\Win32\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.pdb" target="runtimes/win10-x86/native" />
+    <file src="_build\arm64\$Configuration$\OpenAI.WinRT\bin\OpenAI\OpenAI.pdb" target="runtimes/win10-arm64/native" />
     <file src="readme.md" />
     <file src="LICENSE" />
   </files>

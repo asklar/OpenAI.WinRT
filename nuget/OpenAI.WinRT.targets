@@ -14,6 +14,7 @@
 
     <ReferenceCopyLocalPaths Condition="Exists('$(_nugetNativeFolder)OpenAI.dll')" Include="$(_nugetNativeFolder)OpenAI.dll" />
     <ReferenceCopyLocalPaths Condition="Exists('$(_nugetNativeFolder)OpenAI.pri')" Include="$(_nugetNativeFolder)OpenAI.pri" />
+    <ReferenceCopyLocalPaths Condition="Exists('$(_nugetNativeFolder)OpenAI.pdb')" Include="$(_nugetNativeFolder)OpenAI.pdb" />
     <ReferenceCopyLocalPaths Condition="$(Configuration) == 'Debug'" Include="$(_nugetNativeFolder)**\*.xbf" />
   </ItemGroup>
 </Project>
