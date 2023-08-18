@@ -28,6 +28,20 @@ namespace winrt::OpenAI::implementation
     }
   }
 
+  winrt::OpenAI::OpenAIClient OpenAIClient::CreateAzureOpenAIClient(winrt::Windows::Foundation::Uri const& endpoint, winrt::hstring deployment, winrt::hstring const& apiKey)
+  {
+      auto client = winrt::OpenAI::OpenAIClient();
+      client.UseBearerTokenAuthorization(false);
+      client.ApiKey(apiKey);
+      constexpr std::wstring_view uriTemplate = L"{}/openai/deployments/{}/chat/completions?api-version=2023-03-15-preview";
+
+      auto uri = winrt::Windows::Foundation::Uri{ std::vformat(uriTemplate, std::make_wformat_args(endpoint.AbsoluteUri(), deployment))};
+      client.CompletionUri(uri);
+      client.IsChatModel(true);
+
+      return client;
+  }
+
   void OpenAIClient::ApiKey(winrt::hstring v) noexcept
   {
     m_apiKey = v;
@@ -66,8 +80,8 @@ namespace winrt::OpenAI::implementation
       std::wstring requestJson;
       auto modelString = EscapeStringForJson(request.Model());
       const std::wstring_view model{ modelString };
-      const auto isGpt35Turbo = request.Model() == L"gpt-3.5-turbo";
-      if (isGpt35Turbo) {
+      const auto isChatModel = request.Model() == L"gpt-3.5-turbo" || m_isChatModel;
+      if (isChatModel) {
         constexpr std::wstring_view requestTemplate{ LR"({{ {}
   "messages": [{{ "role": "user", "content": {} }}],
   "temperature": {},
@@ -101,7 +115,7 @@ namespace winrt::OpenAI::implementation
         ));
       }
       auto content = winrt::HttpStringContent(requestJson, winrt::UnicodeEncoding::Utf8, L"application/json");
-      auto uri = isGpt35Turbo && UseBearerTokenAuthorization() ? Windows::Foundation::Uri{gpt35turboEndpoint} : CompletionUri();
+      auto uri = isChatModel && UseBearerTokenAuthorization() ? Windows::Foundation::Uri{gpt35turboEndpoint} : CompletionUri();
       auto response = co_await m_client.PostAsync(uri, content);
       auto responseJsonStr = co_await response.Content().ReadAsStringAsync();
       statusCode = response.StatusCode();
@@ -114,7 +128,7 @@ namespace winrt::OpenAI::implementation
           const auto& choice = c.GetObject();
           auto retChoice = winrt::make<Choice>();
           auto retChoiceImpl = winrt::get_self<Choice>(retChoice);
-          if (!isGpt35Turbo) {
+          if (!isChatModel) {
             retChoiceImpl->m_text = choice.GetNamedString(L"text");
           } else {
             auto msg = choice.GetNamedObject(L"message");
@@ -152,7 +166,7 @@ namespace winrt::OpenAI::implementation
             auto choices = json.GetNamedArray(L"choices");
             auto choice = choices.GetObjectAt(0);
             winrt::hstring text;
-            if (!isGpt35Turbo) {
+            if (!isChatModel) {
               text = choice.GetNamedString(L"text");
             } else {
               auto msg = choice.GetNamedObject(L"message");

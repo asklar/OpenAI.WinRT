@@ -35,6 +35,7 @@ namespace OpenAI
     runtimeclass OpenAIClient
     {
         OpenAIClient();
+        static OpenAIClient CreateAzureOpenAIClient(Windows.Foundation.Uri endpoint, String deployment, String apiKey);
         String ApiKey;
         Windows.Foundation.Uri CompletionUri;
 
@@ -50,6 +51,7 @@ namespace OpenAI
         FewShotTemplate CreateFewShotTemplate(Windows.Foundation.Collections.IVectorView<String> parameters);
         
         Windows.Foundation.IAsyncOperation< Windows.Foundation.Collections.IVector<Choice> > GetChatResponseAsync(ChatRequest request);
+        Boolean IsChatModel;
     }
 
     enum Similarity

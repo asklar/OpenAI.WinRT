@@ -18,9 +18,11 @@ namespace winrt::OpenAI::implementation
         winrt::hstring ApiKey() const noexcept { return m_apiKey; }
         void ApiKey(winrt::hstring v) noexcept;
         
-
+        static winrt::OpenAI::OpenAIClient CreateAzureOpenAIClient(winrt::Windows::Foundation::Uri const& uri, winrt::hstring deployment, winrt::hstring const& apiKey);
         static constexpr std::wstring_view gpt35turboEndpoint = L"https://api.openai.com/v1/chat/completions";
-
+        bool m_isChatModel = false;
+        bool IsChatModel() const noexcept { return m_isChatModel; }
+        void IsChatModel(bool v) noexcept { m_isChatModel = v; }
         winrt::Windows::Foundation::Uri CompletionUri() const noexcept { return m_completionUri; }
         void CompletionUri(winrt::Windows::Foundation::Uri v) noexcept { m_completionUri = v; }
         Windows::Foundation::IAsyncOperation<winrt::Windows::Foundation::Collections::IVector<winrt::OpenAI::Choice>> GetCompletionAsync(winrt::hstring prompt, winrt::hstring model);
