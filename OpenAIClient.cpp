@@ -33,10 +33,15 @@ namespace winrt::OpenAI::implementation
       auto client = winrt::OpenAI::OpenAIClient();
       client.UseBearerTokenAuthorization(false);
       client.ApiKey(apiKey);
-      constexpr std::wstring_view uriTemplate = L"{}/openai/deployments/{}/chat/completions?api-version=2023-03-15-preview";
+      constexpr std::wstring_view completionUriTemplate = L"{}/openai/deployments/{}/chat/completions?api-version=2023-03-15-preview";
 
-      auto uri = winrt::Windows::Foundation::Uri{ std::vformat(uriTemplate, std::make_wformat_args(endpoint.AbsoluteUri(), deployment))};
-      client.CompletionUri(uri);
+      auto completionUri = winrt::Windows::Foundation::Uri{ std::vformat(completionUriTemplate, std::make_wformat_args(endpoint.AbsoluteUri(), deployment))};
+      client.CompletionUri(completionUri);
+
+      constexpr std::wstring_view embeddingUriTemplate = L"{}/openai/deployments/{}/embeddings?api-version=2023-05-15";
+      auto embeddingUri = winrt::Windows::Foundation::Uri{ std::vformat(embeddingUriTemplate, std::make_wformat_args(endpoint.AbsoluteUri(), deployment)) };
+      client.EmbeddingUri(embeddingUri);
+
       client.IsChatModel(true);
 
       return client;
